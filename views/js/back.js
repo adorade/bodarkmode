@@ -1,3 +1,11 @@
+/**
+ * BO Dark Mode Module for PrestaShop BackOffice
+ *
+ * @author Adorade
+ * @copyright 2025 Adorade
+ * @license MIT
+ */
+
 // Cache DOM selectors and frequently used values
 const LOCAL_STORAGE_KEY = 'bo_darkModeEnabled';
 const DARK_READER_CONFIG = {
