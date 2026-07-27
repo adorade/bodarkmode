@@ -1,5 +1,5 @@
 /**
- * Dark Reader v4.9.109
+ * Dark Reader v4.9.128
  * https://darkreader.org/
  */
 
@@ -31,18 +31,8 @@
         MessageTypeUItoBG["MARK_NEWS_AS_DISPLAYED"] =
             "ui-bg-mark-news-as-displayed";
         MessageTypeUItoBG["LOAD_CONFIG"] = "ui-bg-load-config";
-        MessageTypeUItoBG["APPLY_DEV_DYNAMIC_THEME_FIXES"] =
-            "ui-bg-apply-dev-dynamic-theme-fixes";
-        MessageTypeUItoBG["RESET_DEV_DYNAMIC_THEME_FIXES"] =
-            "ui-bg-reset-dev-dynamic-theme-fixes";
-        MessageTypeUItoBG["APPLY_DEV_INVERSION_FIXES"] =
-            "ui-bg-apply-dev-inversion-fixes";
-        MessageTypeUItoBG["RESET_DEV_INVERSION_FIXES"] =
-            "ui-bg-reset-dev-inversion-fixes";
-        MessageTypeUItoBG["APPLY_DEV_STATIC_THEMES"] =
-            "ui-bg-apply-dev-static-themes";
-        MessageTypeUItoBG["RESET_DEV_STATIC_THEMES"] =
-            "ui-bg-reset-dev-static-themes";
+        MessageTypeUItoBG["APPLY_DEV_FIXES"] = "ui-bg-apply-dev-fixes";
+        MessageTypeUItoBG["RESET_DEV_FIXES"] = "ui-bg-reset-dev-fixes";
         MessageTypeUItoBG["START_ACTIVATION"] = "ui-bg-start-activation";
         MessageTypeUItoBG["RESET_ACTIVATION"] = "ui-bg-reset-activation";
         MessageTypeUItoBG["COLOR_SCHEME_CHANGE"] = "ui-bg-color-scheme-change";
@@ -124,7 +114,7 @@
     const isMacOS = platform.startsWith("mac");
     isNavigatorDefined && navigator.userAgentData
         ? navigator.userAgentData.mobile
-        : userAgent.includes("mobile");
+        : userAgent.includes("mobile") || false;
     const isShadowDomSupported = typeof ShadowRoot === "function";
     const isMatchMediaChangeEventListenerSupported =
         typeof MediaQueryList === "function" &&
@@ -189,7 +179,10 @@
         }
         if (
             mimeType &&
-            !response.headers.get("Content-Type").startsWith(mimeType)
+            !(
+                response.headers.get("Content-Type") === mimeType ||
+                response.headers.get("Content-Type").startsWith(`${mimeType};`)
+            )
         ) {
             throw new Error(`Mime type mismatch when loading ${url}`);
         }
@@ -1038,54 +1031,155 @@
         }
         return null;
     }
-    function getNumbers($color) {
+    const C_0 = "0".charCodeAt(0);
+    const C_9 = "9".charCodeAt(0);
+    const C_e = "e".charCodeAt(0);
+    const C_DOT = ".".charCodeAt(0);
+    const C_PLUS = "+".charCodeAt(0);
+    const C_MINUS = "-".charCodeAt(0);
+    const C_SPACE = " ".charCodeAt(0);
+    const C_COMMA = ",".charCodeAt(0);
+    const C_SLASH = "/".charCodeAt(0);
+    const C_PERCENT = "%".charCodeAt(0);
+    function getNumbersFromString(input, range, units) {
         const numbers = [];
-        let prevPos = 0;
-        let isMining = false;
-        const startIndex = $color.indexOf("(");
-        $color = $color.substring(startIndex + 1, $color.length - 1);
-        for (let i = 0; i < $color.length; i++) {
-            const c = $color[i];
-            if ((c >= "0" && c <= "9") || c === "." || c === "+" || c === "-") {
-                isMining = true;
-            } else if (isMining && (c === " " || c === "," || c === "/")) {
-                numbers.push($color.substring(prevPos, i));
-                isMining = false;
-                prevPos = i + 1;
-            } else if (!isMining) {
-                prevPos = i + 1;
+        const searchStart = input.indexOf("(") + 1;
+        const searchEnd = input.length - 1;
+        let numStart = -1;
+        let unitStart = -1;
+        const push = (matchEnd) => {
+            const numEnd = unitStart > -1 ? unitStart : matchEnd;
+            const $num = input.slice(numStart, numEnd);
+            let n = parseFloat($num);
+            const r = range[numbers.length];
+            if (unitStart > -1) {
+                const unit = input.slice(unitStart, matchEnd);
+                const u = units[unit];
+                if (u != null) {
+                    n *= r / u;
+                }
+            }
+            if (r > 1) {
+                n = Math.round(n);
+            }
+            numbers.push(n);
+            numStart = -1;
+            unitStart = -1;
+        };
+        for (let i = searchStart; i < searchEnd; i++) {
+            const c = input.charCodeAt(i);
+            const isNumChar =
+                (c >= C_0 && c <= C_9) ||
+                c === C_DOT ||
+                c === C_PLUS ||
+                c === C_MINUS ||
+                c === C_e;
+            const isDelimiter = c === C_SPACE || c === C_COMMA || c === C_SLASH;
+            if (isNumChar) {
+                if (numStart === -1) {
+                    numStart = i;
+                }
+            } else if (numStart > -1) {
+                if (isDelimiter) {
+                    push(i);
+                } else if (unitStart === -1) {
+                    unitStart = i;
+                }
             }
         }
-        if (isMining) {
-            numbers.push($color.substring(prevPos, $color.length));
+        if (numStart > -1) {
+            push(searchEnd);
         }
-        return numbers;
-    }
-    function getNumbersFromString(str, range, units) {
-        const raw = getNumbers(str);
-        const unitsList = Object.entries(units);
-        const numbers = raw
-            .map((r) => r.trim())
-            .map((r, i) => {
-                let n;
-                const unit = unitsList.find(([u]) => r.endsWith(u));
-                if (unit) {
-                    n =
-                        (parseFloat(r.substring(0, r.length - unit[0].length)) /
-                            unit[1]) *
-                        range[i];
-                } else {
-                    n = parseFloat(r);
-                }
-                if (range[i] > 1) {
-                    return Math.round(n);
-                }
-                return n;
-            });
         return numbers;
     }
     const rgbRange = [255, 255, 255, 1];
     const rgbUnits = {"%": 100};
+    function getRGBValues(input) {
+        const CHAR_CODE_0 = 48;
+        const length = input.length;
+        let i = 0;
+        let digitsCount = 0;
+        let digitSequence = false;
+        let floatDigitsCount = -1;
+        let delimiter = C_SPACE;
+        let channel = -1;
+        let result = null;
+        while (i < length) {
+            const c = input.charCodeAt(i);
+            if ((c >= C_0 && c <= C_9) || c === C_DOT) {
+                if (!digitSequence) {
+                    digitSequence = true;
+                    digitsCount = 0;
+                    floatDigitsCount = -1;
+                    channel++;
+                    if (channel === 3 && result) {
+                        result[3] = 0;
+                    }
+                    if (channel > 3) {
+                        return null;
+                    }
+                }
+                if (c === C_DOT) {
+                    if (floatDigitsCount > 0) {
+                        return null;
+                    }
+                    floatDigitsCount = 0;
+                } else {
+                    const d = c - CHAR_CODE_0;
+                    if (!result) {
+                        result = [0, 0, 0, 1];
+                    }
+                    if (floatDigitsCount > -1) {
+                        floatDigitsCount++;
+                        result[channel] += d / 10 ** floatDigitsCount;
+                    } else {
+                        digitsCount++;
+                        if (digitsCount > 3) {
+                            return null;
+                        }
+                        result[channel] = result[channel] * 10 + d;
+                    }
+                }
+            } else if (c === C_PERCENT) {
+                if (
+                    channel < 0 ||
+                    channel > 3 ||
+                    delimiter !== C_SPACE ||
+                    !result
+                ) {
+                    return null;
+                }
+                result[channel] =
+                    channel < 3
+                        ? Math.round((result[channel] * 255) / 100)
+                        : result[channel] / 100;
+                digitSequence = false;
+            } else {
+                digitSequence = false;
+                if (c === C_SPACE) {
+                    if (channel === 0) {
+                        delimiter = c;
+                    }
+                } else if (c === C_COMMA) {
+                    if (channel === -1) {
+                        return null;
+                    }
+                    delimiter = C_COMMA;
+                } else if (c === C_SLASH) {
+                    if (channel !== 2 || delimiter !== C_SPACE) {
+                        return null;
+                    }
+                } else {
+                    return null;
+                }
+            }
+            i++;
+        }
+        if (channel < 2 || channel > 3) {
+            return null;
+        }
+        return result;
+    }
     function parseRGB($rgb) {
         const [r, g, b, a = 1] = getNumbersFromString($rgb, rgbRange, rgbUnits);
         if (r == null || g == null || b == null || a == null) {
@@ -1102,29 +1196,48 @@
         }
         return hslToRGB({h, s, l, a});
     }
+    const C_A = "A".charCodeAt(0);
+    const C_F = "F".charCodeAt(0);
+    const C_a = "a".charCodeAt(0);
+    const C_f = "f".charCodeAt(0);
     function parseHex($hex) {
-        const h = $hex.substring(1);
-        switch (h.length) {
-            case 3:
-            case 4: {
-                const [r, g, b] = [0, 1, 2].map((i) =>
-                    parseInt(`${h[i]}${h[i]}`, 16)
-                );
-                const a =
-                    h.length === 3 ? 1 : parseInt(`${h[3]}${h[3]}`, 16) / 255;
-                return {r, g, b, a};
+        const length = $hex.length;
+        const digitCount = length - 1;
+        const isShort = digitCount === 3 || digitCount === 4;
+        const isLong = digitCount === 6 || digitCount === 8;
+        if (!isShort && !isLong) {
+            return null;
+        }
+        const hex = (i) => {
+            const c = $hex.charCodeAt(i);
+            if (c >= C_A && c <= C_F) {
+                return c + 10 - C_A;
             }
-            case 6:
-            case 8: {
-                const [r, g, b] = [0, 2, 4].map((i) =>
-                    parseInt(h.substring(i, i + 2), 16)
-                );
-                const a =
-                    h.length === 6 ? 1 : parseInt(h.substring(6, 8), 16) / 255;
-                return {r, g, b, a};
+            if (c >= C_a && c <= C_f) {
+                return c + 10 - C_a;
+            }
+            return c - C_0;
+        };
+        let r;
+        let g;
+        let b;
+        let a = 1;
+        if (isShort) {
+            r = hex(1) * 17;
+            g = hex(2) * 17;
+            b = hex(3) * 17;
+            if (digitCount === 4) {
+                a = (hex(4) * 17) / 255;
+            }
+        } else {
+            r = hex(1) * 16 + hex(2);
+            g = hex(3) * 16 + hex(4);
+            b = hex(5) * 16 + hex(6);
+            if (digitCount === 8) {
+                a = (hex(7) * 16 + hex(8)) / 255;
             }
         }
-        return null;
+        return {r, g, b, a};
     }
     function getColorByName($color) {
         const n = knownColors.get($color);
@@ -1420,17 +1533,6 @@
         }
         return {add, cancel};
     }
-    const delayTokens = new Set();
-    function requestAnimationFrameOnce(token, callback) {
-        if (delayTokens.has(token)) {
-            return;
-        }
-        delayTokens.add(token);
-        requestAnimationFrame(() => {
-            delayTokens.delete(token);
-            callback();
-        });
-    }
 
     function hexify(number) {
         return (number < 16 ? "0" : "") + number.toString(16);
@@ -1534,12 +1636,6 @@
 
     function logInfo(...args) {}
     function logWarn(...args) {}
-    function logAssert(...args) {}
-    function ASSERT(description, condition) {
-        if (!condition) {
-            logAssert(description);
-        }
-    }
 
     function removeNode(node) {
         node && node.parentNode && node.parentNode.removeChild(node);
@@ -1870,10 +1966,12 @@
                         m.startsWith("all") ||
                         m.startsWith("(")
                 );
-                const isPrintOrSpeech = media.some(
-                    (m) => m.startsWith("print") || m.startsWith("speech")
-                );
-                if (isScreenOrAllOrQuery || !isPrintOrSpeech) {
+                const isNotScreen =
+                    !isScreenOrAllOrQuery &&
+                    media.some((m) =>
+                        ignoredMedia.some((i) => m.startsWith(i))
+                    );
+                if (isScreenOrAllOrQuery || !isNotScreen) {
                     iterateCSSRules(rule.cssRules, iterate, onImportError);
                 }
             } else if (isSupportsRule(rule)) {
@@ -1887,6 +1985,17 @@
             }
         });
     }
+    const ignoredMedia = [
+        "aural",
+        "braille",
+        "embossed",
+        "handheld",
+        "print",
+        "projection",
+        "speech",
+        "tty",
+        "tv"
+    ];
     const shorthandVarDependantProperties = [
         "background",
         "border",
@@ -1905,13 +2014,6 @@
           })
         : null;
     function iterateCSSDeclarations(style, iterate) {
-        forEach(style, (property) => {
-            const value = style.getPropertyValue(property).trim();
-            if (!value) {
-                return;
-            }
-            iterate(property, value);
-        });
         const cssText = style.cssText;
         if (cssText.includes("var(")) {
             if (isSafari) {
@@ -1932,7 +2034,8 @@
             }
         }
         if (
-            cssText.includes("background-color: ;") &&
+            (cssText.includes("background-color: ;") ||
+                cssText.includes("background-image: ;")) &&
             !style.getPropertyValue("background")
         ) {
             handleEmptyShorthand("background", style, iterate);
@@ -1944,6 +2047,13 @@
         ) {
             handleEmptyShorthand("border", style, iterate);
         }
+        forEach(style, (property) => {
+            const value = style.getPropertyValue(property).trim();
+            if (!value) {
+                return;
+            }
+            iterate(property, value);
+        });
     }
     function handleEmptyShorthand(shorthand, style, iterate) {
         const parentRule = style.parentRule;
@@ -1965,6 +2075,7 @@
                 }
             } else if (shorthand === "background") {
                 iterate("background-color", "#ffffff");
+                iterate("background-image", "none");
             }
         }
     }
@@ -2118,7 +2229,7 @@
             types.forEach((type) => {
                 if (registered[type]) {
                     const {variable, value} = registered[type];
-                    variablesSheet?.cssRules[0].style.setProperty(
+                    variablesSheet?.cssRules[0]?.style.setProperty(
                         variable,
                         value
                     );
@@ -2209,7 +2320,7 @@
         "lightSchemeBackgroundColor",
         "lightSchemeTextColor"
     ];
-    function getCacheId(rgb, theme) {
+    function getCacheId(rgb, theme, poleA, poleB) {
         let resultId = "";
         rgbCacheKeys.forEach((key) => {
             resultId += `${rgb[key]};`;
@@ -2217,6 +2328,7 @@
         themeCacheKeys.forEach((key) => {
             resultId += `${theme[key]};`;
         });
+        resultId += `${poleA};${poleB}`;
         return resultId;
     }
     function modifyColorWithCache(
@@ -2233,7 +2345,7 @@
             fnCache = new Map();
             colorModificationCache.set(modifyHSL, fnCache);
         }
-        const id = getCacheId(rgb, theme);
+        const id = getCacheId(rgb, theme, poleColor, anotherPoleColor);
         if (fnCache.has(id)) {
             return fnCache.get(id);
         }
@@ -2641,6 +2753,13 @@
         if (window.DarkReader?.Plugins?.fetch) {
             return window.DarkReader.Plugins.fetch(request);
         }
+        const parsedURL = new URL(request.url);
+        if (
+            parsedURL.origin !== request.origin &&
+            shouldIgnoreCors(parsedURL)
+        ) {
+            throw new Error("Cross-origin limit reached");
+        }
         return new Promise((resolve, reject) => {
             const id = generateUID();
             resolvers$1.set(id, resolve);
@@ -2668,19 +2787,128 @@
             }
         }
     });
+    const ipV4RegExp = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
+    const MAX_CORS_HOSTS = 16;
+    const corsHosts = new Set();
+    const checkedHosts = new Set();
+    const localAliases = [
+        "127-0-0-1.org.uk",
+        "42foo.com",
+        "domaincontrol.com",
+        "fbi.com",
+        "fuf.me",
+        "lacolhost.com",
+        "local.sisteminha.com",
+        "localfabriek.nl",
+        "localhost",
+        "localhst.co.uk",
+        "localmachine.info",
+        "localmachine.name",
+        "localtest.me",
+        "lvh.me",
+        "mouse-potato.com",
+        "nip.io",
+        "sslip.io",
+        "vcap.me",
+        "xip.io",
+        "yoogle.com"
+    ];
+    const localSubDomains = [
+        ".corp",
+        ".direct",
+        ".home",
+        ".internal",
+        ".intranet",
+        ".lan",
+        ".local",
+        ".localdomain",
+        ".test",
+        ".zz",
+        ...localAliases.map((alias) => `.${alias}`)
+    ];
+    function shouldIgnoreCors(url) {
+        const {host, hostname, port, protocol} = url;
+        if (!corsHosts.has(host)) {
+            corsHosts.add(host);
+        }
+        if (checkedHosts.has(host)) {
+            return false;
+        }
+        if (
+            corsHosts.size >= MAX_CORS_HOSTS ||
+            protocol !== "https:" ||
+            port !== "" ||
+            localAliases.includes(hostname) ||
+            localSubDomains.some((sub) => hostname.endsWith(sub)) ||
+            hostname.startsWith("[") ||
+            hostname.match(ipV4RegExp)
+        ) {
+            return true;
+        }
+        checkedHosts.add(host);
+        return false;
+    }
 
     const imageManager = new AsyncQueue();
     async function getImageDetails(url) {
         return new Promise(async (resolve, reject) => {
             try {
-                const dataURL = url.startsWith("data:")
+                let dataURL = url.startsWith("data:")
                     ? url
                     : await getDataURL(url);
                 const blob =
                     tryConvertDataURLToBlobSync(dataURL) ??
                     (await loadAsBlob(url));
                 let image;
+                let useViewBox = false;
                 if (dataURL.startsWith("data:image/svg+xml")) {
+                    const commaIndex = dataURL.indexOf(",");
+                    if (commaIndex >= 0) {
+                        let svgText = dataURL.slice(commaIndex + 1);
+                        const encoding = dataURL
+                            .slice(0, commaIndex)
+                            .split(";")[1];
+                        if (encoding === "base64") {
+                            if (svgText.includes("%")) {
+                                svgText = decodeURIComponent(svgText);
+                            }
+                            svgText = atob(svgText);
+                        } else if (svgText.startsWith("%3c")) {
+                            svgText = decodeURIComponent(svgText);
+                        }
+                        if (svgText.startsWith("<svg ")) {
+                            const closingIndex = svgText.indexOf(">");
+                            const svgOpening = svgText
+                                .slice(0, closingIndex + 1)
+                                .toLocaleLowerCase();
+                            if (
+                                svgOpening.includes("viewbox=") &&
+                                !svgOpening.includes("width=") &&
+                                !svgOpening.includes("height=")
+                            ) {
+                                useViewBox = true;
+                                const viewboxIndex =
+                                    svgOpening.indexOf("viewbox=");
+                                const quote = svgOpening[viewboxIndex + 8];
+                                const viewboxCloseIndex = svgOpening.indexOf(
+                                    quote,
+                                    viewboxIndex + 9
+                                );
+                                const viewBox = svgOpening
+                                    .slice(viewboxIndex + 9, viewboxCloseIndex)
+                                    .split(" ")
+                                    .map((x) => parseFloat(x));
+                                if (
+                                    viewBox.length === 4 &&
+                                    !viewBox.some((x) => isNaN(x))
+                                ) {
+                                    const width = viewBox[2] - viewBox[0];
+                                    const height = viewBox[3] - viewBox[1];
+                                    dataURL = `data:image/svg+xml;base64,${btoa(`<svg width="${width}" height="${height}" ${svgText.slice(5)}`)}`;
+                                }
+                            }
+                        }
+                    }
                     image = await loadImage(dataURL);
                 } else {
                     image =
@@ -2694,6 +2922,7 @@
                         dataURL: analysis.isLarge ? "" : dataURL,
                         width: image.width,
                         height: image.height,
+                        useViewBox,
                         ...analysis
                     });
                 });
@@ -2707,7 +2936,11 @@
         if (parsedURL.origin === location.origin) {
             return await loadAsDataURL(url);
         }
-        return await bgFetch({url, responseType: "data-url"});
+        return await bgFetch({
+            url,
+            responseType: "data-url",
+            origin: location.origin
+        });
     }
     async function tryCreateImageBitmap(blob) {
         try {
@@ -2772,7 +3005,8 @@
                 isDark: false,
                 isLight: false,
                 isTransparent: false,
-                isLarge: false
+                isLarge: false,
+                averageColor: null
             };
         }
         const isLarge = sw * sh > LARGE_IMAGE_PIXELS_COUNT;
@@ -2793,6 +3027,12 @@
         let transparentPixelsCount = 0;
         let darkPixelsCount = 0;
         let lightPixelsCount = 0;
+        let minLightness = 1;
+        let maxLightness = 0;
+        let sumR = 0;
+        let sumG = 0;
+        let sumB = 0;
+        let sumA = 0;
         let i, x, y;
         let r, g, b, a;
         let l;
@@ -2803,6 +3043,10 @@
                 g = d[i + 1];
                 b = d[i + 2];
                 a = d[i + 3];
+                sumR += r;
+                sumG += g;
+                sumB += b;
+                sumA += a;
                 if (a / 255 < TRANSPARENT_ALPHA_THRESHOLD) {
                     transparentPixelsCount++;
                 } else {
@@ -2813,6 +3057,12 @@
                     if (l > LIGHT_LIGHTNESS_THRESHOLD) {
                         lightPixelsCount++;
                     }
+                    if (l < minLightness) {
+                        minLightness = l;
+                    }
+                    if (l > maxLightness) {
+                        maxLightness = l;
+                    }
                 }
             }
         }
@@ -2821,6 +3071,18 @@
         const DARK_IMAGE_THRESHOLD = 0.7;
         const LIGHT_IMAGE_THRESHOLD = 0.7;
         const TRANSPARENT_IMAGE_THRESHOLD = 0.1;
+        const SOLID_LIGHTNESS_DIFF_THRESHOLD = 0.1;
+        const isSolid =
+            sumA === totalPixelsCount * 255 &&
+            maxLightness - minLightness < SOLID_LIGHTNESS_DIFF_THRESHOLD;
+        const solidColor = isSolid
+            ? {
+                  r: Math.round(sumR / opaquePixelsCount),
+                  g: Math.round(sumG / opaquePixelsCount),
+                  b: Math.round(sumB / opaquePixelsCount),
+                  a: transparentPixelsCount / totalPixelsCount
+              }
+            : null;
         return {
             isDark: darkPixelsCount / opaquePixelsCount >= DARK_IMAGE_THRESHOLD,
             isLight:
@@ -2828,7 +3090,8 @@
             isTransparent:
                 transparentPixelsCount / totalPixelsCount >=
                 TRANSPARENT_IMAGE_THRESHOLD,
-            isLarge
+            isLarge,
+            solidColor
         };
     }
     let isBlobURLSupported = null;
@@ -2877,13 +3140,16 @@
     }
     document.addEventListener("securitypolicyviolation", onCSPError);
     const objectURLs = new Set();
-    function getFilteredImageURL({dataURL, width, height}, theme) {
+    function getFilteredImageURL({dataURL, width, height, useViewBox}, theme) {
         if (dataURL.startsWith("data:image/svg+xml")) {
             dataURL = escapeXML(dataURL);
         }
         const matrix = getSVGFilterMatrixValue(theme);
+        const size = useViewBox
+            ? `viewBox="0 0 ${width} ${height}"`
+            : `width="${width}" height="${height}"`;
         const svg = [
-            `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}">`,
+            `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ${size}>`,
             "<defs>",
             '<filter id="darkreader-image-filter">',
             `<feColorMatrix type="matrix" values="${matrix}" />`,
@@ -2903,6 +3169,17 @@
         const objectURL = URL.createObjectURL(blob);
         objectURLs.add(objectURL);
         return objectURL;
+    }
+    function getSolidColorImageURL({width, height, useViewBox}, color) {
+        const size = useViewBox
+            ? `viewBox="0 0 ${width} ${height}"`
+            : `width="${width}" height="${height}"`;
+        const svg = [
+            `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ${size}>`,
+            `<rect width="100%" height="100%" fill="${escapeXML(color)}" />`,
+            "</svg>"
+        ].join("");
+        return `data:image/svg+xml;base64,${btoa(svg)}`;
     }
     const xmlEscapeChars = {
         "<": "&lt;",
@@ -2926,7 +3203,11 @@
         if (encoding !== "base64" || !mediaType) {
             return null;
         }
-        const characters = atob(dataURL.substring(commaIndex + 1));
+        let base64Content = dataURL.substring(commaIndex + 1);
+        if (base64Content.includes("%")) {
+            base64Content = decodeURIComponent(base64Content);
+        }
+        const characters = atob(base64Content);
         const bytes = new Uint8Array(characters.length);
         for (let i = 0; i < characters.length; i++) {
             bytes[i] = characters.charCodeAt(i);
@@ -2963,6 +3244,22 @@
     function getPriority(ruleStyle, property) {
         return Boolean(ruleStyle && ruleStyle.getPropertyPriority(property));
     }
+    function canFilterImage(url) {
+        if (url.startsWith("data:")) {
+            return true;
+        }
+        try {
+            return new URL(url).origin === location.origin;
+        } catch {
+            return false;
+        }
+    }
+    const bgPropsToCopy = [
+        "background-clip",
+        "background-position",
+        "background-repeat",
+        "background-size"
+    ];
     function getModifiableCSSDeclaration(
         property,
         value,
@@ -2985,7 +3282,8 @@
             modifier = getVariableDependantModifier(
                 variablesStore,
                 property,
-                value
+                value,
+                rule
             );
         } else if (property === "color-scheme") {
             modifier = getColorSchemeModifier();
@@ -3001,7 +3299,7 @@
             if (
                 property.startsWith("border") &&
                 property !== "border-color" &&
-                value === "initial"
+                (value === "initial" || value === "currentcolor")
             ) {
                 const borderSideProp = property.substring(
                     0,
@@ -3009,9 +3307,12 @@
                 );
                 const borderSideVal =
                     rule.style.getPropertyValue(borderSideProp);
+                const borderStyleVal =
+                    rule.style.getPropertyValue("border-style");
                 if (
                     borderSideVal.startsWith("0px") ||
-                    borderSideVal === "none"
+                    borderSideVal === "none" ||
+                    borderStyleVal === "none"
                 ) {
                     property = borderSideProp;
                     modifier = borderSideVal;
@@ -3025,14 +3326,21 @@
             property === "background-image" ||
             property === "list-style-image"
         ) {
+            const selectorText = rule.selectorText;
+            const pushFilter = selectorText
+                ? (type) => pushFilterSelector(selectorText, type)
+                : null;
             modifier = getBgImageModifier(
                 value,
                 rule,
                 ignoreImageSelectors,
-                isCancelled
+                isCancelled,
+                pushFilter
             );
         } else if (property.includes("shadow")) {
             modifier = getShadowModifier(value);
+        } else if (bgPropsToCopy.includes(property) && value !== "initial") {
+            modifier = value;
         }
         if (!modifier) {
             return null;
@@ -3218,6 +3526,23 @@
         lines.push("}");
         return lines.join("\n");
     }
+    let addFilterSelector$1 = null;
+    function setFilterSelectorHandler(fn) {
+        addFilterSelector$1 = fn;
+    }
+    function pushFilterSelector(selector, type) {
+        if (selector && addFilterSelector$1) {
+            addFilterSelector$1(selector, type);
+        }
+    }
+    const filterCompatibleProps = new Set([
+        "background",
+        "background-image",
+        "list-style-image"
+    ]);
+    function isFilterCompatibleProp(property) {
+        return filterCompatibleProps.has(property);
+    }
     const unparsableColors = new Set([
         "inherit",
         "transparent",
@@ -3245,14 +3570,11 @@
             return null;
         }
         if (prop.includes("background")) {
+            const maskImageValue = rule.style.maskImage ?? rule.style.mask;
             if (
-                (rule.style.webkitMaskImage &&
-                    rule.style.webkitMaskImage !== "none") ||
-                (rule.style.webkitMask &&
-                    !rule.style.webkitMask.startsWith("none")) ||
-                (rule.style.mask && rule.style.mask !== "none") ||
-                (rule.style.getPropertyValue("mask-image") &&
-                    rule.style.getPropertyValue("mask-image") !== "none")
+                maskImageValue &&
+                !maskImageValue.startsWith("none") &&
+                !maskImageValue.startsWith("linear-gradient")
             ) {
                 return (theme) => modifyForegroundColor(rgb, theme);
             }
@@ -3338,7 +3660,8 @@
         value,
         rule,
         ignoreImageSelectors,
-        isCancelled
+        isCancelled,
+        pushFilter = null
     ) {
         try {
             if (shouldIgnoreImage(rule.selectorText, ignoreImageSelectors)) {
@@ -3462,7 +3785,15 @@
                                 awaitingForImageLoading.set(url, []);
                                 imageDetails = await getImageDetails(url);
                                 imageDetailsCache.set(url, imageDetails);
-                                writeImageDetailsCache(url, imageDetails);
+                                if (!url.startsWith("data:")) {
+                                    const parsedURL = new URL(url);
+                                    if (parsedURL.origin === location.origin) {
+                                        writeImageDetailsCache(
+                                            url,
+                                            imageDetails
+                                        );
+                                    }
+                                }
                                 awaitingForImageLoading
                                     .get(url)
                                     .forEach((resolve) =>
@@ -3501,10 +3832,31 @@
                     return `url("${url}")`;
                 };
             };
+            const isSafeToInvert = () => {
+                const repeat = (
+                    rule.style.backgroundRepeat || ""
+                ).toLowerCase();
+                const size = (rule.style.backgroundSize || "").toLowerCase();
+                const isTiled =
+                    repeat.length > 0 &&
+                    repeat !== "no-repeat" &&
+                    !repeat.includes("no-repeat");
+                const isStretched =
+                    size.includes("cover") ||
+                    size.includes("contain") ||
+                    size.includes("100%");
+                return !isTiled && !isStretched;
+            };
             const getBgImageValue = (imageDetails, theme) => {
-                const {isDark, isLight, isTransparent, isLarge, width} =
-                    imageDetails;
-                let result;
+                const {
+                    isDark,
+                    isLight,
+                    isTransparent,
+                    isLarge,
+                    solidColor,
+                    width
+                } = imageDetails;
+                let result = null;
                 const logSrc = imageDetails.src.startsWith("data:")
                     ? "data:"
                     : imageDetails.src;
@@ -3518,26 +3870,59 @@
                     width > 2
                 ) {
                     logInfo(`Inverting dark image ${logSrc}`);
-                    const inverted = getFilteredImageURL(imageDetails, {
-                        ...theme,
-                        sepia: clamp(theme.sepia + 10, 0, 100)
-                    });
-                    result = `url("${inverted}")`;
+                    if (canFilterImage(imageDetails.src)) {
+                        const inverted = getFilteredImageURL(imageDetails, {
+                            ...theme,
+                            sepia: clamp(theme.sepia + 10, 0, 100)
+                        });
+                        result = `url("${inverted}")`;
+                    } else if (isSafeToInvert()) {
+                        pushFilter?.("invert");
+                    }
                 } else if (isLight && !isTransparent && theme.mode === 1) {
-                    logInfo(`Dimming light image ${logSrc}`);
-                    const dimmed = getFilteredImageURL(imageDetails, theme);
-                    result = `url("${dimmed}")`;
-                } else if (theme.mode === 0 && isLight) {
+                    if (solidColor) {
+                        logInfo(`Replacing image with a solid color ${logSrc}`);
+                        const darkColor = modifyBackgroundColor(
+                            solidColor,
+                            theme,
+                            false
+                        );
+                        const solid = getSolidColorImageURL(
+                            imageDetails,
+                            darkColor
+                        );
+                        result = `url("${solid}")`;
+                    } else if (canFilterImage(imageDetails.src)) {
+                        logInfo(`Inverting light image ${logSrc}`);
+                        const inverted = getFilteredImageURL(
+                            imageDetails,
+                            theme
+                        );
+                        result = `url("${inverted}")`;
+                    } else if (isSafeToInvert()) {
+                        pushFilter?.("invert");
+                    }
+                } else if (
+                    theme.mode === 0 &&
+                    isLight &&
+                    imageDetails.dataURL
+                ) {
                     logInfo(`Applying filter to image ${logSrc}`);
-                    const filtered = getFilteredImageURL(imageDetails, {
-                        ...theme,
-                        brightness: clamp(theme.brightness - 10, 5, 200),
-                        sepia: clamp(theme.sepia + 10, 0, 100)
-                    });
-                    result = `url("${filtered}")`;
+                    if (canFilterImage(imageDetails.src)) {
+                        const filtered = getFilteredImageURL(imageDetails, {
+                            ...theme,
+                            brightness: clamp(theme.brightness - 10, 5, 200),
+                            sepia: clamp(theme.sepia + 10, 0, 100)
+                        });
+                        result = `url("${filtered}")`;
+                    } else {
+                        pushFilter?.("dim");
+                    }
                 } else {
+                    if (theme.mode === 1 && !canFilterImage(imageDetails.src)) {
+                        pushFilter?.("none");
+                    }
                     logInfo(`Not modifying the image ${logSrc}`);
-                    result = null;
                 }
                 return result;
             };
@@ -3689,8 +4074,8 @@
             isCancelled
         });
     }
-    function getVariableDependantModifier(variablesStore, prop, value) {
-        return variablesStore.getModifierForVarDependant(prop, value);
+    function getVariableDependantModifier(variablesStore, prop, value, rule) {
+        return variablesStore.getModifierForVarDependant(prop, value, rule);
     }
     function cleanModificationCache() {
         clearColorModificationCache();
@@ -3706,6 +4091,9 @@
     const VAR_TYPE_TEXT_COLOR = 1 << 1;
     const VAR_TYPE_BORDER_COLOR = 1 << 2;
     const VAR_TYPE_BG_IMG = 1 << 3;
+    const shouldSetDefaultColor =
+        !location.hostname.startsWith("www.ebay.") &&
+        !location.hostname.includes(".ebay.");
     class VariablesStore {
         constructor() {
             this.varTypes = new Map();
@@ -3720,6 +4108,8 @@
             this.changedTypeVars = new Set();
             this.typeChangeSubscriptions = new Map();
             this.unstableVarValues = new Map();
+            this.varFilterTypes = new Map();
+            this.notifyingVarFilterTypes = new Set();
         }
         clear() {
             this.varTypes.clear();
@@ -3734,6 +4124,8 @@
             this.changedTypeVars.clear();
             this.typeChangeSubscriptions.clear();
             this.unstableVarValues.clear();
+            this.varFilterTypes.clear();
+            this.notifyingVarFilterTypes.clear();
         }
         isVarType(varName, typeNum) {
             return (
@@ -3894,11 +4286,15 @@
                                 (fallback) => tryModifyBgColor(fallback, theme)
                             );
                         }
+                        const pushFilter = rule.selectorText
+                            ? (type) => this.setVarFilterType(varName, type)
+                            : null;
                         const bgModifier = getBgImageModifier(
                             modifiedValue,
                             rule,
                             ignoredImgSelectors,
-                            isCancelled
+                            isCancelled,
+                            pushFilter
                         );
                         modifiedValue =
                             typeof bgModifier === "function"
@@ -3913,6 +4309,9 @@
                 };
                 const callbacks = new Set();
                 const addListener = (onTypeChange) => {
+                    if (!rule.selectorText) {
+                        return;
+                    }
                     const callback = () => {
                         const decs = getDeclarations();
                         onTypeChange(decs);
@@ -3934,7 +4333,10 @@
                 };
             };
         }
-        getModifierForVarDependant(property, sourceValue) {
+        getModifierForVarDependant(property, sourceValue, rule) {
+            if (rule && rule.selectorText && isFilterCompatibleProp(property)) {
+                this.watchFilterVars(sourceValue, rule.selectorText);
+            }
             const isConstructedColor = sourceValue.match(/^\s*(rgb|hsl)a?\(/);
             const isSimpleConstructedColor = sourceValue.match(
                 /^rgba?\(var\(--[\-_A-Za-z0-9]+\)(\s*,?\/?\s*0?\.\d+)?\)$/
@@ -3963,10 +4365,12 @@
                 (isSimpleConstructedColor && property === "background")
             ) {
                 return (theme) => {
-                    const defaultFallback = tryModifyBgColor(
-                        isConstructedColor ? "255, 255, 255" : "#ffffff",
-                        theme
-                    );
+                    const defaultFallback = shouldSetDefaultColor
+                        ? tryModifyBgColor(
+                              isConstructedColor ? "255, 255, 255" : "#ffffff",
+                              theme
+                          )
+                        : "transparent";
                     return replaceCSSVariablesNames(
                         sourceValue,
                         (v) => wrapBgColorVariableName(v),
@@ -4026,10 +4430,7 @@
                     };
                     const modified = modify();
                     if (unknownVars.size > 0) {
-                        const isFallbackResolved = modified.match(
-                            /^var\(.*?, ((var\(--darkreader-bg--.*\))|(#[0-9A-Fa-f]+)|([a-z]+)|(rgba?\(.+\))|(hsla?\(.+\)))\)$/
-                        );
-                        if (isFallbackResolved) {
+                        if (isFallbackResolved(modified)) {
                             return modified;
                         }
                         return new Promise((resolve) => {
@@ -4079,6 +4480,49 @@
             if (this.typeChangeSubscriptions.has(varName)) {
                 this.typeChangeSubscriptions.get(varName).delete(callback);
             }
+        }
+        setVarFilterType(varName, type) {
+            if (this.varFilterTypes.get(varName) === type) {
+                return;
+            }
+            this.varFilterTypes.set(varName, type);
+            if (this.notifyingVarFilterTypes.has(varName)) {
+                return;
+            }
+            const subs = this.typeChangeSubscriptions.get(varName);
+            if (subs && subs.size > 0) {
+                this.notifyingVarFilterTypes.add(varName);
+                subs.forEach((callback) => callback());
+                this.notifyingVarFilterTypes.delete(varName);
+            }
+        }
+        pushFilterSelectorsForValue(sourceValue, selector) {
+            const directRefs = new Set();
+            iterateVarDependencies(sourceValue, (v) => directRefs.add(v));
+            const allRefs = new Set();
+            directRefs.forEach((v) => {
+                allRefs.add(v);
+                this.iterateVarRefs(v, (ref) => allRefs.add(ref));
+            });
+            allRefs.forEach((v) => {
+                const type = this.varFilterTypes.get(v);
+                if (type) {
+                    pushFilterSelector(selector, type);
+                }
+            });
+        }
+        watchFilterVars(sourceValue, selector) {
+            const directRefs = new Set();
+            iterateVarDependencies(sourceValue, (v) => directRefs.add(v));
+            const allRefs = new Set();
+            directRefs.forEach((v) => {
+                allRefs.add(v);
+                this.iterateVarRefs(v, (ref) => allRefs.add(ref));
+            });
+            this.pushFilterSelectorsForValue(sourceValue, selector);
+            const callback = () =>
+                this.pushFilterSelectorsForValue(sourceValue, selector);
+            allRefs.forEach((v) => this.subscribeForVarTypeChange(v, callback));
         }
         collectVariablesAndVarDep() {
             this.rulesQueue.forEach((rules) => {
@@ -4134,9 +4578,7 @@
             }
             this.definedVars.add(varName);
             const isColor = Boolean(
-                value.match(rawRGBSpaceRegex) ||
-                    value.match(rawRGBCommaRegex) ||
-                    parseColorWithCache(value)
+                getRGBValues(value) || parseColorWithCache(value)
             );
             if (isColor) {
                 this.unknownColorVars.add(varName);
@@ -4267,10 +4709,6 @@
             this.onRootVariableDefined = callback;
         }
         putRootVars(styleElement, theme) {
-            const sheet = styleElement.sheet;
-            if (sheet.cssRules.length > 0) {
-                sheet.deleteRule(0);
-            }
             const declarations = new Map();
             iterateCSSDeclarations(
                 document.documentElement.style,
@@ -4308,7 +4746,15 @@
             }
             cssLines.push("}");
             const cssText = cssLines.join("\n");
-            sheet.insertRule(cssText);
+            const sheet = styleElement.sheet;
+            if (sheet) {
+                if (sheet.cssRules.length > 0) {
+                    sheet.deleteRule(0);
+                }
+                sheet.insertRule(cssText);
+            } else {
+                styleElement.textContent = cssText;
+            }
         }
     }
     const variablesStore = new VariablesStore();
@@ -4428,6 +4874,43 @@
             value.match(/^(((\d{1,3})|(var\([\-_A-Za-z0-9]+\))),?\s*?){3}$/)
         );
     }
+    function isFallbackResolved(modified) {
+        if (modified.startsWith("var(") && modified.endsWith(")")) {
+            const hasNestedBrackets = modified.endsWith("))");
+            const hasDoubleNestedBrackets = modified.endsWith(")))");
+            const lastOpenBracketIndex = hasNestedBrackets
+                ? modified.lastIndexOf("(")
+                : -1;
+            const firstOpenBracketIndex = hasDoubleNestedBrackets
+                ? modified.lastIndexOf("(", lastOpenBracketIndex - 1)
+                : lastOpenBracketIndex;
+            const commaIndex = modified.lastIndexOf(
+                ",",
+                hasNestedBrackets ? firstOpenBracketIndex : modified.length
+            );
+            if (commaIndex < 0 || modified[commaIndex + 1] !== " ") {
+                return false;
+            }
+            const fallback = modified.slice(
+                commaIndex + 2,
+                modified.length - 1
+            );
+            if (hasNestedBrackets) {
+                return (
+                    fallback.startsWith("rgb(") ||
+                    fallback.startsWith("rgba(") ||
+                    fallback.startsWith("hsl(") ||
+                    fallback.startsWith("hsla(") ||
+                    fallback.startsWith("var(--darkreader-bg--") ||
+                    fallback.startsWith("var(--darkreader-background-") ||
+                    (hasDoubleNestedBrackets &&
+                        fallback.includes("var(--darkreader-background-"))
+                );
+            }
+            return fallback.match(/^(#[0-9a-f]+)|([a-z]+)$/i);
+        }
+        return false;
+    }
     const textColorProps = [
         "color",
         "caret-color",
@@ -4438,13 +4921,13 @@
     function isTextColorProperty(property) {
         return textColorProps.includes(property);
     }
-    const rawRGBSpaceRegex = /^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})$/;
-    const rawRGBCommaRegex = /^(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})$/;
     function parseRawColorValue(input) {
-        const match =
-            input.match(rawRGBSpaceRegex) ?? input.match(rawRGBCommaRegex);
-        if (match) {
-            const color = `rgb(${match[1]}, ${match[2]}, ${match[3]})`;
+        const v = getRGBValues(input);
+        if (v) {
+            const color =
+                v[3] < 1
+                    ? `rgb(${v[0]} ${v[1]} ${v[2]} / ${v[3]})`
+                    : `rgb(${v[0]} ${v[1]} ${v[2]})`;
             return {isRaw: true, color};
         }
         return {isRaw: false, color: input};
@@ -4457,7 +4940,9 @@
             if (isRaw) {
                 const outputInRGB = parseColorWithCache(outputColor);
                 return outputInRGB
-                    ? `${outputInRGB.r}, ${outputInRGB.g}, ${outputInRGB.b}`
+                    ? Number.isNaN(outputInRGB.a) || outputInRGB.a === 1
+                        ? `${outputInRGB.r}, ${outputInRGB.g}, ${outputInRGB.b}`
+                        : `${outputInRGB.r}, ${outputInRGB.g}, ${outputInRGB.b}, ${outputInRGB.a}`
                     : outputColor;
             }
             return outputColor;
@@ -4519,6 +5004,9 @@
             let cssText = rule.cssText;
             if (isMediaRule(rule.parentRule)) {
                 cssText = `${rule.parentRule.media.mediaText} { ${cssText} }`;
+            }
+            if (isLayerRule(rule.parentRule)) {
+                cssText = `${rule.parentRule.name} { ${cssText} }`;
             }
             return getHashCode(cssText);
         }
@@ -4624,6 +5112,12 @@
                     selector.includes("::view-transition-");
                 if (emptyIsWhereSelector || viewTransitionSelector) {
                     selectorText = ".darkreader-unsupported-selector";
+                }
+                if (isChromium && selectorText.endsWith("::picker")) {
+                    selectorText = selectorText.replaceAll(
+                        "::picker",
+                        "::picker(select)"
+                    );
                 }
                 let ruleText = `${selectorText} {`;
                 for (const dec of declarations) {
@@ -4895,10 +5389,20 @@
     function canHaveAdoptedStyleSheets(node) {
         return Array.isArray(node.adoptedStyleSheets);
     }
+    const getAdoptedSheets = isFirefox
+        ? (node) =>
+              node.adoptedStyleSheets.wrappedJSObject ?? node.adoptedStyleSheets
+        : (node) => node.adoptedStyleSheets;
+    const createOverrideSheet = isFirefox
+        ? () => {
+              const pageWindow = window.wrappedJSObject ?? window;
+              return new pageWindow.CSSStyleSheet();
+          }
+        : () => new CSSStyleSheet();
     function createAdoptedStyleSheetOverride(node) {
         let cancelAsyncOperations = false;
         function iterateSourceSheets(iterator) {
-            node.adoptedStyleSheets.forEach((sheet) => {
+            forEach(getAdoptedSheets(node), (sheet) => {
                 if (!overrides$1.has(sheet)) {
                     iterator(sheet);
                 }
@@ -4906,24 +5410,33 @@
             });
         }
         function injectSheet(sheet, override) {
-            const newSheets = [...node.adoptedStyleSheets];
+            const newSheets = isFirefox
+                ? getAdoptedSheets(node)
+                : [...node.adoptedStyleSheets];
             const sheetIndex = newSheets.indexOf(sheet);
             const overrideIndex = newSheets.indexOf(override);
             if (overrideIndex >= 0) {
                 newSheets.splice(overrideIndex, 1);
             }
             newSheets.splice(sheetIndex + 1, 0, override);
-            node.adoptedStyleSheets = newSheets;
+            if (!isFirefox) {
+                node.adoptedStyleSheets = newSheets;
+            }
         }
         function clear() {
-            const newSheets = [...node.adoptedStyleSheets];
+            const newSheets = isFirefox
+                ? getAdoptedSheets(node)
+                : [...node.adoptedStyleSheets];
             for (let i = newSheets.length - 1; i >= 0; i--) {
                 const sheet = newSheets[i];
                 if (overrides$1.has(sheet)) {
                     newSheets.splice(i, 1);
                 }
             }
-            if (node.adoptedStyleSheets.length !== newSheets.length) {
+            if (
+                !isFirefox &&
+                node.adoptedStyleSheets.length !== newSheets.length
+            ) {
                 node.adoptedStyleSheets = newSheets;
             }
             sourceSheets = new WeakSet();
@@ -4947,7 +5460,7 @@
                 count += sheet.cssRules.length;
             });
             if (count === 1) {
-                const rule = node.adoptedStyleSheets[0].cssRules[0];
+                const rule = getAdoptedSheets(node)[0].cssRules[0];
                 return rule instanceof CSSStyleRule ? rule.style.length : count;
             }
             return count;
@@ -4956,8 +5469,9 @@
         let sourceDeclarations = new WeakSet();
         function render(theme, ignoreImageAnalysis) {
             clear();
-            for (let i = node.adoptedStyleSheets.length - 1; i >= 0; i--) {
-                const sheet = node.adoptedStyleSheets[i];
+            const sheets = getAdoptedSheets(node);
+            for (let i = sheets.length - 1; i >= 0; i--) {
+                const sheet = sheets[i];
                 if (overrides$1.has(sheet)) {
                     continue;
                 }
@@ -4969,7 +5483,7 @@
                     continue;
                 }
                 const rules = sheet.cssRules;
-                const override = new CSSStyleSheet();
+                const override = createOverrideSheet();
                 overridesBySource.set(sheet, override);
                 iterateCSSRules(rules, (rule) =>
                     sourceDeclarations.add(rule.style)
@@ -5003,7 +5517,7 @@
             callbackRequested = true;
             queueMicrotask(() => {
                 callbackRequested = false;
-                const sheets = node.adoptedStyleSheets.filter(
+                const sheets = getAdoptedSheets(node).filter(
                     (s) => !overrides$1.has(s)
                 );
                 sheets.forEach((sheet) => overridesBySource.delete(sheet));
@@ -5057,88 +5571,42 @@
             watch
         };
     }
-    class StyleSheetCommandBuilder {
-        constructor() {
-            this.cssRules = [];
-            this.commands = [];
-        }
-        insertRule(cssText, index = 0) {
-            this.commands.push({type: "insert", index, cssText});
-            this.cssRules.splice(index, 0, new StyleSheetCommandBuilder());
-            return index;
-        }
-        deleteRule(index) {
-            this.commands.push({type: "delete", index});
-            this.cssRules.splice(index, 1);
-        }
-        replaceSync(cssText) {
-            this.commands.splice(0);
-            this.commands.push({type: "replace", cssText});
-            if (cssText === "") {
-                this.cssRules.splice(0);
-            } else {
-                throw new Error(
-                    "StyleSheetCommandBuilder.replaceSync() is not fully supported"
-                );
-            }
-        }
-        getDeepCSSCommands() {
-            const deep = [];
-            this.commands.forEach((command) => {
-                deep.push({
-                    type: command.type,
-                    cssText: command.type !== "delete" ? command.cssText : "",
-                    path: command.type === "replace" ? [] : [command.index]
-                });
-            });
-            this.cssRules.forEach((rule, i) => {
-                const childCommands = rule.getDeepCSSCommands();
-                childCommands.forEach((c) => c.path.unshift(i));
-            });
-            return deep;
-        }
-        clearDeepCSSCommands() {
-            this.commands.splice(0);
-            this.cssRules.forEach((rule) => rule.clearDeepCSSCommands());
-        }
-    }
-    function createAdoptedStyleSheetFallback() {
-        let cancelAsyncOperations = false;
-        const builder = new StyleSheetCommandBuilder();
-        function render(options) {
-            const prepareSheet = () => {
-                builder.replaceSync("");
-                return builder;
-            };
-            const sheetModifier = createStyleSheetModifier();
-            sheetModifier.modifySheet({
-                prepareSheet,
-                sourceCSSRules: options.cssRules,
-                theme: options.theme,
-                ignoreImageAnalysis: options.ignoreImageAnalysis,
-                force: false,
-                isAsyncCancelled: () => cancelAsyncOperations
-            });
-        }
-        function commands() {
-            const commands = builder.getDeepCSSCommands();
-            builder.clearDeepCSSCommands();
-            return commands;
-        }
-        function destroy() {
-            cancelAsyncOperations = true;
-        }
-        return {render, destroy, commands};
-    }
 
-    const hostsBreakingOnStylePosition = ["www.diffusioneshop.com", "zhale.me"];
+    const hostsBreakingOnStylePosition = [
+        "chat.google.com",
+        "gogoprivate.com",
+        "gprivate.com",
+        "www.berlingske.dk",
+        "www.bloomberg.com",
+        "www.diffusioneshop.com",
+        "www.weekendavisen.dk",
+        "zhale.me"
+    ];
     const mode = hostsBreakingOnStylePosition.includes(location.hostname)
         ? "away"
         : "next";
     function getStyleInjectionMode() {
         return mode;
     }
+    const stylesWaitingForBody = new Set();
+    let bodyObserver;
     function injectStyleAway(styleElement) {
+        if (!document.body) {
+            stylesWaitingForBody.add(styleElement);
+            if (!bodyObserver) {
+                bodyObserver = new MutationObserver(() => {
+                    if (document.body) {
+                        bodyObserver.disconnect();
+                        bodyObserver = null;
+                        stylesWaitingForBody.forEach((el) =>
+                            injectStyleAway(el)
+                        );
+                        stylesWaitingForBody.clear();
+                    }
+                });
+            }
+            return;
+        }
         let container = document.body.querySelector(
             ".darkreader-style-container"
         );
@@ -5148,8 +5616,31 @@
             container.classList.add("darkreader-style-container");
             container.style.display = "none";
             document.body.append(container);
+            containerObserver = new MutationObserver(() => {
+                if (container?.nextElementSibling != null) {
+                    container
+                        .querySelectorAll(".darkreader--sync")
+                        .forEach((el) => {
+                            if (el.sheet.cssRules.length > 0) {
+                                let cssText = "";
+                                for (const rule of el.sheet.cssRules) {
+                                    cssText += rule.cssText;
+                                }
+                                el.textContent = cssText;
+                            }
+                        });
+                    document.body.append(container);
+                }
+            });
+            containerObserver.observe(document.body, {childList: true});
         }
         container.append(styleElement);
+    }
+    let containerObserver;
+    function removeStyleContainer() {
+        bodyObserver?.disconnect();
+        containerObserver?.disconnect();
+        document.querySelector(".darkreader-style-container")?.remove();
     }
 
     const overrides = {
@@ -5303,6 +5794,10 @@
     }
     const treeObservers = new Map();
     const attrObservers = new Map();
+    let asyncCancelled = true;
+    function isAsyncCancelled() {
+        return asyncCancelled;
+    }
     function watchForInlineStyles(elementStyleDidChange, shadowRootDiscovered) {
         deepWatchForInlineStyles(
             document,
@@ -5336,10 +5831,10 @@
                 elementStyleDidChange(el);
             });
             iterateShadowHosts(node, (n) => {
-                if (discoveredNodes.has(node)) {
+                if (discoveredNodes.has(n)) {
                     return;
                 }
-                discoveredNodes.add(node);
+                discoveredNodes.add(n);
                 shadowRootDiscovered(n.shadowRoot);
                 deepWatchForInlineStyles(
                     n.shadowRoot,
@@ -5416,6 +5911,7 @@
         attrObservers.set(root, attrObserver);
     }
     function stopWatchingForInlineStyles() {
+        asyncCancelled = true;
         treeObservers.forEach((o) => o.disconnect());
         attrObservers.forEach((o) => o.disconnect());
         treeObservers.clear();
@@ -5431,8 +5927,8 @@
         }
         const shouldAnalyze = Boolean(
             svg &&
-                (svg.getAttribute("class")?.includes("logo") ||
-                    svg.parentElement?.getAttribute("class")?.includes("logo"))
+            (svg.getAttribute("class")?.includes("logo") ||
+                svg.parentElement?.getAttribute("class")?.includes("logo"))
         );
         svgAnalysisConditionCache.set(svg, shouldAnalyze);
         return shouldAnalyze;
@@ -5453,25 +5949,73 @@
         }
         return false;
     }
+    const LOOP_DETECTION_THRESHOLD = 1000;
+    const MAX_LOOP_CYCLES = 10;
+    const elementsLastChanges = new WeakMap();
+    const elementsLoopCycles = new WeakMap();
+    const SMALL_SVG_THRESHOLD = 32;
+    const svgNodesRoots = new WeakMap();
+    const svgRootSizeTestResults = new WeakMap();
+    function getSVGElementRoot(svgElement) {
+        if (!svgElement) {
+            return null;
+        }
+        if (svgNodesRoots.has(svgElement)) {
+            return svgNodesRoots.get(svgElement);
+        }
+        if (svgElement instanceof SVGSVGElement) {
+            return svgElement;
+        }
+        const parent = svgElement.parentNode;
+        const root = getSVGElementRoot(parent);
+        svgNodesRoots.set(svgElement, root);
+        return root;
+    }
+    const inlineStringValueCache = new Map();
     function overrideInlineStyle(
         element,
         theme,
         ignoreInlineSelectors,
         ignoreImageSelectors
     ) {
+        if (elementsLastChanges.has(element)) {
+            if (
+                Date.now() - elementsLastChanges.get(element) <
+                LOOP_DETECTION_THRESHOLD
+            ) {
+                const cycles = elementsLoopCycles.get(element) ?? 0;
+                elementsLoopCycles.set(element, cycles + 1);
+            } else {
+                elementsLoopCycles.delete(element);
+            }
+            if ((elementsLoopCycles.get(element) ?? 0) >= MAX_LOOP_CYCLES) {
+                return;
+            }
+        }
+        if (element.parentElement?.dataset.nodeViewContent) {
+            return;
+        }
         const cacheKey = getInlineStyleCacheKey(element, theme);
         if (cacheKey === inlineStyleCache.get(element)) {
             return;
         }
         const unsetProps = new Set(Object.keys(overrides));
         function setCustomProp(targetCSSProp, modifierCSSProp, cssVal) {
+            const cachedStringValue = inlineStringValueCache
+                .get(modifierCSSProp)
+                ?.get(cssVal);
+            if (cachedStringValue) {
+                setStaticValue(cachedStringValue);
+                return;
+            }
+            asyncCancelled = false;
             const mod = getModifiableCSSDeclaration(
                 modifierCSSProp,
                 cssVal,
                 {style: element.style},
                 variablesStore,
                 ignoreImageSelectors,
-                null
+                isAsyncCancelled
             );
             if (!mod) {
                 return;
@@ -5531,6 +6075,10 @@
                 typeof mod.value === "function" ? mod.value(theme) : mod.value;
             if (typeof value === "string") {
                 setStaticValue(value);
+                if (!inlineStringValueCache.has(modifierCSSProp)) {
+                    inlineStringValueCache.set(modifierCSSProp, new Map());
+                }
+                inlineStringValueCache.get(modifierCSSProp).set(cssVal, value);
             } else if (value instanceof Promise) {
                 setAsyncValue(value, cssVal);
             } else if (typeof value === "object") {
@@ -5601,7 +6149,8 @@
         if (
             (element === document.documentElement ||
                 element === document.body) &&
-            element.hasAttribute("background")
+            element.hasAttribute("background") &&
+            element.getAttribute("background") !== ""
         ) {
             const url = getAbsoluteURL(
                 location.href,
@@ -5617,21 +6166,42 @@
                 value.match(/^[0-9a-f]{6}$/i)
             ) {
                 value = `#${value}`;
+            } else if (value.match(/^#?[0-9a-f]{4}$/i)) {
+                const hex = value.startsWith("#") ? value.substring(1) : value;
+                value = `#${hex}00`;
             }
             setCustomProp("color", "color", value);
         }
         if (isSVGElement) {
             if (element.hasAttribute("fill")) {
-                const SMALL_SVG_LIMIT = 32;
                 const value = element.getAttribute("fill");
-                if (value !== "none") {
+                if (value !== "none" && value !== "currentColor") {
                     if (!(element instanceof SVGTextElement)) {
                         const handleSVGElement = () => {
-                            const {width, height} =
-                                element.getBoundingClientRect();
-                            const isBg =
-                                width > SMALL_SVG_LIMIT ||
-                                height > SMALL_SVG_LIMIT;
+                            let isSVGSmall = false;
+                            const root = getSVGElementRoot(element);
+                            if (!root) {
+                                return;
+                            }
+                            if (svgRootSizeTestResults.has(root)) {
+                                isSVGSmall = svgRootSizeTestResults.get(root);
+                            } else {
+                                const svgBounds = root.getBoundingClientRect();
+                                isSVGSmall =
+                                    svgBounds.width * svgBounds.height <=
+                                    Math.pow(SMALL_SVG_THRESHOLD, 2);
+                                svgRootSizeTestResults.set(root, isSVGSmall);
+                            }
+                            let isBg;
+                            if (isSVGSmall) {
+                                isBg = false;
+                            } else {
+                                const {width, height} =
+                                    element.getBoundingClientRect();
+                                isBg =
+                                    width > SMALL_SVG_THRESHOLD ||
+                                    height > SMALL_SVG_THRESHOLD;
+                            }
                             setCustomProp(
                                 "fill",
                                 isBg ? "background-color" : "color",
@@ -5723,6 +6293,7 @@
             element.removeAttribute(overrides[cssProp].dataAttr);
         });
         inlineStyleCache.set(element, getInlineStyleCacheKey(element, theme));
+        elementsLastChanges.set(element, Date.now());
     }
 
     const metaThemeColorName = "theme-color";
@@ -5775,6 +6346,65 @@
         if (meta && srcMetaThemeColor) {
             meta.content = srcMetaThemeColor;
         }
+    }
+
+    const filterSelectors = {
+        invert: new Set(),
+        dim: new Set(),
+        none: new Set()
+    };
+    function addFilterSelector(selector, type) {
+        if (!selector) {
+            return;
+        }
+        const selectors = filterSelectors[type];
+        let changed = false;
+        selector.split(",").forEach((part) => {
+            const s = part.trim();
+            if (!s || selectors.has(s)) {
+                return;
+            }
+            for (const existing of selectors) {
+                if (isSelectorWithin(s, existing)) {
+                    return;
+                }
+            }
+            for (const existing of [...selectors]) {
+                if (isSelectorWithin(existing, s)) {
+                    selectors.delete(existing);
+                }
+            }
+            selectors.add(s);
+            changed = true;
+        });
+        return changed;
+    }
+    function isSelectorWithin(sub, parent) {
+        const parentLength = parent.length;
+        const subLength = sub.length;
+        if (subLength < parentLength || !sub.startsWith(parent)) {
+            return false;
+        }
+        if (subLength === parentLength) {
+            return true;
+        }
+        let i = parentLength;
+        const c = sub[i];
+        if (c === "." || c === ":" || c === "#" || c === "[" || c === ">") {
+            return true;
+        }
+        if (c === "+" || c === "~" || c !== " ") {
+            return false;
+        }
+        while (sub[i] === " ") {
+            i++;
+        }
+        return sub[i] !== "+" && sub[i] !== "~";
+    }
+    function cleanFilterSelectors() {
+        filterSelectors.invert.clear();
+        filterSelectors.dim.clear();
+        filterSelectors.none.clear();
     }
 
     const cssCommentsRegex = /\/\*[\s\S]*?\*\//g;
@@ -5887,17 +6517,28 @@
     }
 
     const STYLE_SELECTOR = 'style, link[rel*="stylesheet" i]:not([disabled])';
-    function isFontsGoogleApiStyle(element) {
-        if (!element.href) {
+    let ignoredCSSURLPatterns = [];
+    function setIgnoredCSSURLs(patterns) {
+        ignoredCSSURLPatterns = patterns || [];
+    }
+    function shouldIgnoreCSSURL(url) {
+        if (!url || ignoredCSSURLPatterns.length === 0) {
             return false;
         }
-        try {
-            const elementURL = new URL(element.href);
-            return elementURL.hostname === "fonts.googleapis.com";
-        } catch (err) {
-            logInfo(`Couldn't construct ${element.href} as URL`);
-            return false;
+        for (const pattern of ignoredCSSURLPatterns) {
+            if (pattern.startsWith("^")) {
+                if (url.startsWith(pattern.slice(1))) {
+                    return true;
+                }
+            } else if (pattern.endsWith("$")) {
+                if (url.endsWith(pattern.slice(0, -1))) {
+                    return true;
+                }
+            } else if (url.includes(pattern)) {
+                return true;
+            }
         }
+        return false;
     }
     const hostsBreakingOnSVGStyleOverride = [
         "account.containerstore.com",
@@ -5919,9 +6560,9 @@
                     (isFirefox
                         ? !element.href.startsWith("moz-extension://")
                         : true) &&
-                    !isFontsGoogleApiStyle(element))) &&
+                    !shouldIgnoreCSSURL(element.href))) &&
             !element.classList.contains("darkreader") &&
-            element.media.toLowerCase() !== "print" &&
+            !ignoredMedia.includes(element.media.toLowerCase()) &&
             !element.classList.contains("stylus")
         );
     }
@@ -5936,7 +6577,7 @@
             forEach(node.querySelectorAll(STYLE_SELECTOR), (style) =>
                 getManageableStyles(style, results, false)
             );
-            if (deep) {
+            if (deep && (node.children?.length > 0 || node.shadowRoot)) {
                 iterateShadowHosts(node, (host) =>
                     getManageableStyles(host.shadowRoot, results, false)
                 );
@@ -5945,7 +6586,8 @@
         return results;
     }
     const syncStyleSet = new WeakSet();
-    const corsStyleSet = new WeakSet();
+    const corsCopies = new WeakMap();
+    const corsCopiesTextLengths = new WeakMap();
     let loadingLinkCounter = 0;
     const rejectorsForLoadingLinks = new Map();
     function cleanLoadingLinks() {
@@ -5953,7 +6595,6 @@
     }
     function manageStyle(element, {update, loadingStart, loadingEnd}) {
         const inMode = getStyleInjectionMode();
-        let corsCopy = null;
         let syncStyle = null;
         if (inMode === "next") {
             const prevStyles = [];
@@ -5964,18 +6605,12 @@
             ) {
                 prevStyles.push(next);
             }
-            corsCopy =
-                prevStyles.find(
-                    (el) =>
-                        el.matches(".darkreader--cors") && !corsStyleSet.has(el)
-                ) || null;
             syncStyle =
                 prevStyles.find(
                     (el) =>
                         el.matches(".darkreader--sync") && !syncStyleSet.has(el)
                 ) || null;
         }
-        let corsCopyPositionWatcher = null;
         let syncStylePositionWatcher = null;
         let cancelAsyncOperations = false;
         let isOverrideEmpty = true;
@@ -6037,8 +6672,8 @@
             return result;
         }
         function getRulesSync() {
-            if (corsCopy) {
-                return corsCopy.sheet.cssRules;
+            if (corsCopies.has(element)) {
+                return corsCopies.get(element).cssRules;
             }
             if (containsCSSImport()) {
                 return null;
@@ -6060,29 +6695,13 @@
         }
         function insertStyle() {
             if (inMode === "next") {
-                if (corsCopy) {
-                    if (element.nextSibling !== corsCopy) {
-                        element.parentNode.insertBefore(
-                            corsCopy,
-                            element.nextSibling
-                        );
-                    }
-                    if (corsCopy.nextSibling !== syncStyle) {
-                        element.parentNode.insertBefore(
-                            syncStyle,
-                            corsCopy.nextSibling
-                        );
-                    }
-                } else if (element.nextSibling !== syncStyle) {
+                if (element.nextSibling !== syncStyle) {
                     element.parentNode.insertBefore(
                         syncStyle,
                         element.nextSibling
                     );
                 }
             } else if (inMode === "away") {
-                if (corsCopy && !corsCopy.parentNode) {
-                    injectStyleAway(corsCopy);
-                }
                 injectStyleAway(syncStyle);
             }
         }
@@ -6158,8 +6777,8 @@
                 return null;
             }
             await createOrUpdateCORSCopy(cssText, cssBasePath);
-            if (corsCopy) {
-                return corsCopy.sheet.cssRules;
+            if (corsCopies.has(element)) {
+                return corsCopies.get(element).cssRules;
             }
             return null;
         }
@@ -6170,43 +6789,24 @@
                         cssText,
                         cssBasePath
                     );
-                    if (corsCopy) {
+                    if (corsCopies.has(element)) {
                         if (
-                            (corsCopy.textContent?.length ?? 0) <
+                            (corsCopiesTextLengths.get(element) ?? 0) <
                             fullCSSText.length
                         ) {
-                            corsCopy.textContent = fullCSSText;
+                            corsCopies.get(element).replaceSync(fullCSSText);
+                            corsCopiesTextLengths.set(
+                                element,
+                                fullCSSText.length
+                            );
                         }
                     } else {
-                        corsCopy = createCORSCopy(
-                            fullCSSText,
-                            inMode === "next"
-                                ? (cc) =>
-                                      element.parentNode.insertBefore(
-                                          cc,
-                                          element.nextSibling
-                                      )
-                                : injectStyleAway
-                        );
-                        if (corsCopy) {
-                            if (inMode === "next") {
-                                element.parentNode.insertBefore(
-                                    corsCopy,
-                                    element.nextSibling
-                                );
-                            } else if (inMode === "away") {
-                                injectStyleAway(corsCopy);
-                            }
-                        }
+                        const corsCopy = new CSSStyleSheet();
+                        corsCopy.replaceSync(fullCSSText);
+                        corsCopies.set(element, corsCopy);
                     }
                 } catch (err) {
                     logWarn(err);
-                }
-                if (corsCopy && inMode === "next") {
-                    corsCopyPositionWatcher = watchForNodePosition(
-                        corsCopy,
-                        "prev-sibling"
-                    );
                 }
             }
         }
@@ -6292,7 +6892,8 @@
                     force,
                     isAsyncCancelled
                 });
-                isOverrideEmpty = syncStyle.sheet.cssRules.length === 0;
+                isOverrideEmpty =
+                    !syncStyle.sheet || syncStyle.sheet.cssRules.length === 0;
                 if (sheetModifier.shouldRebuildStyle()) {
                     addReadyStateCompleteListener(() => update());
                 }
@@ -6329,13 +6930,12 @@
         function pause() {
             observer.disconnect();
             cancelAsyncOperations = true;
-            corsCopyPositionWatcher && corsCopyPositionWatcher.stop();
             syncStylePositionWatcher && syncStylePositionWatcher.stop();
             sheetChangeWatcher.stop();
         }
         function destroy() {
             pause();
-            removeNode(corsCopy);
+            corsCopies.delete(element);
             removeNode(syncStyle);
             loadingEnd();
             if (rejectorsForLoadingLinks.has(loadingLinkId)) {
@@ -6363,7 +6963,6 @@
             }
             logWarn("Restore style", syncStyle, element);
             insertStyle();
-            corsCopyPositionWatcher && corsCopyPositionWatcher.skip();
             syncStylePositionWatcher && syncStylePositionWatcher.skip();
             if (!isOverrideEmpty) {
                 forceRenderStyle = true;
@@ -6436,7 +7035,9 @@
                 origin: location.origin
             });
         }
-        writeCSSFetchCache(url, text);
+        if (parsedURL.origin === location.origin) {
+            writeCSSFetchCache(url, text);
+        }
         return text;
     }
     async function replaceCSSImports(cssText, basePath, cache = new Map()) {
@@ -6491,20 +7092,6 @@
         }
         cssText = cssText.trim();
         return cssText;
-    }
-    function createCORSCopy(cssText, inject) {
-        if (!cssText) {
-            return null;
-        }
-        const cors = document.createElement("style");
-        cors.classList.add("darkreader");
-        cors.classList.add("darkreader--cors");
-        cors.media = "screen";
-        cors.textContent = cssText;
-        inject(cors);
-        cors.sheet.disabled = true;
-        corsStyleSet.add(cors);
-        return cors;
     }
 
     function injectProxy(
@@ -6813,124 +7400,119 @@
                     }
             });
         }
-        {
-            const adoptedSheetsSourceProxies = new WeakMap();
-            const adoptedSheetsProxySources = new WeakMap();
-            const adoptedSheetsChangeEvent = new CustomEvent(
-                "__darkreader__adoptedStyleSheetsChange"
-            );
-            const adoptedSheetOverrideCache = new WeakSet();
-            const adoptedSheetsSnapshots = new WeakMap();
-            const isDRAdoptedSheetOverride = (sheet) => {
-                if (!sheet || !sheet.cssRules) {
-                    return false;
-                }
-                if (adoptedSheetOverrideCache.has(sheet)) {
-                    return true;
-                }
-                if (
-                    sheet.cssRules.length > 0 &&
-                    sheet.cssRules[0].cssText.startsWith(
-                        "#__darkreader__adoptedOverride"
-                    )
-                ) {
-                    adoptedSheetOverrideCache.add(sheet);
-                    return true;
-                }
+        const adoptedSheetsSourceProxies = new WeakMap();
+        const adoptedSheetsProxySources = new WeakMap();
+        const adoptedSheetsChangeEvent = new CustomEvent(
+            "__darkreader__adoptedStyleSheetsChange"
+        );
+        const adoptedSheetOverrideCache = new WeakSet();
+        const adoptedSheetsSnapshots = new WeakMap();
+        const isDRAdoptedSheetOverride = (sheet) => {
+            if (!sheet || !sheet.cssRules) {
                 return false;
-            };
-            const areArraysEqual = (a, b) => {
-                return a.length === b.length && a.every((x, i) => x === b[i]);
-            };
-            const onAdoptedSheetsChange = (node) => {
-                const prev = adoptedSheetsSnapshots.get(node);
-                const curr = (node.adoptedStyleSheets || []).filter(
-                    (s) => !isDRAdoptedSheetOverride(s)
-                );
-                adoptedSheetsSnapshots.set(node, curr);
-                if (!prev || !areArraysEqual(prev, curr)) {
-                    curr.forEach((sheet) => {
-                        if (!adoptedSheetOwners.has(sheet)) {
-                            adoptedSheetOwners.set(sheet, new Set());
+            }
+            if (adoptedSheetOverrideCache.has(sheet)) {
+                return true;
+            }
+            if (
+                sheet.cssRules.length > 0 &&
+                sheet.cssRules[0].cssText.startsWith(
+                    "#__darkreader__adoptedOverride"
+                )
+            ) {
+                adoptedSheetOverrideCache.add(sheet);
+                return true;
+            }
+            return false;
+        };
+        const areArraysEqual = (a, b) => {
+            return a.length === b.length && a.every((x, i) => x === b[i]);
+        };
+        const onAdoptedSheetsChange = (node) => {
+            const prev = adoptedSheetsSnapshots.get(node);
+            const curr = (node.adoptedStyleSheets || []).filter(
+                (s) => !isDRAdoptedSheetOverride(s)
+            );
+            adoptedSheetsSnapshots.set(node, curr);
+            if (!prev || !areArraysEqual(prev, curr)) {
+                curr.forEach((sheet) => {
+                    if (!adoptedSheetOwners.has(sheet)) {
+                        adoptedSheetOwners.set(sheet, new Set());
+                    }
+                    adoptedSheetOwners.get(sheet).add(node);
+                    for (const rule of sheet.cssRules) {
+                        const declaration = rule.style;
+                        if (declaration) {
+                            adoptedDeclarationSheets.set(declaration, sheet);
                         }
-                        adoptedSheetOwners.get(sheet).add(node);
-                        for (const rule of sheet.cssRules) {
-                            const declaration = rule.style;
-                            if (declaration) {
-                                adoptedDeclarationSheets.set(
-                                    declaration,
-                                    sheet
-                                );
-                            }
-                        }
-                    });
-                    node.dispatchEvent(adoptedSheetsChangeEvent);
-                }
-            };
-            const proxyAdoptedSheetsArray = (node, source) => {
-                if (adoptedSheetsProxySources.has(source)) {
-                    return source;
-                }
-                if (adoptedSheetsSourceProxies.has(source)) {
-                    return adoptedSheetsSourceProxies.get(source);
-                }
-                const proxy = new Proxy(source, {
-                    deleteProperty(target, property) {
-                        delete target[property];
-                        return true;
-                    },
-                    set(target, property, value) {
-                        target[property] = value;
-                        if (property === "length") {
-                            onAdoptedSheetsChange(node);
-                        }
-                        return true;
                     }
                 });
-                adoptedSheetsSourceProxies.set(source, proxy);
-                adoptedSheetsProxySources.set(proxy, source);
-                return proxy;
-            };
-            [Document, ShadowRoot].forEach((ctor) => {
-                overrideProperty(ctor, "adoptedStyleSheets", {
-                    get: (native) =>
-                        function () {
-                            const source = native.call(this);
-                            return proxyAdoptedSheetsArray(this, source);
-                        },
-                    set: (native) =>
-                        function (source) {
-                            if (adoptedSheetsProxySources.has(source)) {
-                                source = adoptedSheetsProxySources.get(source);
-                            }
-                            native.call(this, source);
-                            onAdoptedSheetsChange(this);
-                        }
-                });
+                node.dispatchEvent(adoptedSheetsChangeEvent);
+            }
+        };
+        const proxyAdoptedSheetsArray = (node, source) => {
+            if (adoptedSheetsProxySources.has(source)) {
+                return source;
+            }
+            if (adoptedSheetsSourceProxies.has(source)) {
+                return adoptedSheetsSourceProxies.get(source);
+            }
+            const proxy = new Proxy(source, {
+                deleteProperty(target, property) {
+                    delete target[property];
+                    return true;
+                },
+                set(target, property, value) {
+                    target[property] = value;
+                    if (property === "length") {
+                        onAdoptedSheetsChange(node);
+                    }
+                    return true;
+                }
             });
-            const adoptedDeclarationChangeEvent = new CustomEvent(
-                "__darkreader__adoptedStyleDeclarationChange"
-            );
-            ["setProperty", "removeProperty"].forEach((key) => {
-                override(CSSStyleDeclaration, key, (native) => {
-                    return function (...args) {
-                        const returnValue = native.apply(this, args);
-                        const sheet = adoptedDeclarationSheets.get(this);
-                        if (sheet) {
-                            const owners = adoptedSheetOwners.get(sheet);
-                            if (owners) {
-                                owners.forEach((node) => {
-                                    node.dispatchEvent(
-                                        adoptedDeclarationChangeEvent
-                                    );
-                                });
-                            }
+            adoptedSheetsSourceProxies.set(source, proxy);
+            adoptedSheetsProxySources.set(proxy, source);
+            return proxy;
+        };
+        [Document, ShadowRoot].forEach((ctor) => {
+            overrideProperty(ctor, "adoptedStyleSheets", {
+                get: (native) =>
+                    function () {
+                        const source = native.call(this);
+                        return proxyAdoptedSheetsArray(this, source);
+                    },
+                set: (native) =>
+                    function (source) {
+                        if (adoptedSheetsProxySources.has(source)) {
+                            source = adoptedSheetsProxySources.get(source);
                         }
-                        return returnValue;
-                    };
-                });
+                        native.call(this, source);
+                        onAdoptedSheetsChange(this);
+                    }
             });
-        }
+        });
+        const adoptedDeclarationChangeEvent = new CustomEvent(
+            "__darkreader__adoptedStyleDeclarationChange"
+        );
+        ["setProperty", "removeProperty"].forEach((key) => {
+            override(CSSStyleDeclaration, key, (native) => {
+                return function (...args) {
+                    const returnValue = native.apply(this, args);
+                    const sheet = adoptedDeclarationSheets.get(this);
+                    if (sheet) {
+                        const owners = adoptedSheetOwners.get(sheet);
+                        if (owners) {
+                            owners.forEach((node) => {
+                                node.dispatchEvent(
+                                    adoptedDeclarationChangeEvent
+                                );
+                            });
+                        }
+                    }
+                    return returnValue;
+                };
+            });
+        });
     }
 
     const definedCustomElements = new Set();
@@ -6957,10 +7539,6 @@
             customElementsWhenDefined(tag).then(() => {
                 if (elementsDefinitionCallback) {
                     const elements = undefinedGroups.get(tag);
-                    ASSERT(
-                        "recordUndefinedElement() undefined groups should not be empty",
-                        elements
-                    );
                     undefinedGroups.delete(tag);
                     elementsDefinitionCallback(Array.from(elements));
                 }
@@ -7003,10 +7581,6 @@
     function handleIsDefined(e) {
         canOptimizeUsingProxy = true;
         const tag = e.detail.tag;
-        ASSERT(
-            "handleIsDefined() expects lower-case node names",
-            () => tag.toLowerCase() === tag
-        );
         definedCustomElements.add(tag);
         if (resolvers.has(tag)) {
             const r = resolvers.get(tag);
@@ -7015,10 +7589,6 @@
         }
     }
     async function customElementsWhenDefined(tag) {
-        ASSERT(
-            "customElementsWhenDefined() expects lower-case node names",
-            () => tag.toLowerCase() === tag
-        );
         if (definedCustomElements.has(tag)) {
             return;
         }
@@ -7158,9 +7728,22 @@
                 removedStyles,
                 movedStyles
             });
+            const potentialHosts = new Set();
             additions.forEach((n) => {
+                if (n.parentElement) {
+                    potentialHosts.add(n.parentElement);
+                }
+                if (n.previousElementSibling) {
+                    potentialHosts.add(n.previousElementSibling);
+                }
                 deepObserve(n);
                 collectUndefinedElements(n);
+            });
+            potentialHosts.forEach((el) => {
+                if (el.shadowRoot && !observedRoots.has(el)) {
+                    subscribeForShadowRootChanges(el);
+                    deepObserve(el.shadowRoot);
+                }
             });
             additions.forEach(
                 (node) => isCustomElement(node) && recordUndefinedElement(node)
@@ -7275,6 +7858,14 @@
         });
         document.addEventListener("__darkreader__isDefined", handleIsDefined);
         collectUndefinedElements(document);
+        addDOMReadyListener(() => {
+            forEach(document.body.children, (el) => {
+                if (el.shadowRoot && !observedRoots.has(el)) {
+                    subscribeForShadowRootChanges(el);
+                    deepObserve(el.shadowRoot);
+                }
+            });
+        });
     }
     function resetObservers() {
         observers.forEach((o) => o.disconnect());
@@ -7297,8 +7888,6 @@
     const INSTANCE_ID = generateUID();
     const styleManagers = new Map();
     const adoptedStyleManagers = [];
-    const adoptedStyleFallbacks = new Map();
-    const adoptedStyleChangeTokens = new WeakMap();
     let theme = null;
     let fixes = null;
     let isIFrame$1 = null;
@@ -7359,6 +7948,116 @@
             injectStyleAway(style);
         }
     }
+    const scheduleInversionStyleUpdate = throttle(() => {
+        const invertStyle = document.head?.querySelector(".darkreader--invert");
+        if (invertStyle) {
+            setInversionStyleValue(invertStyle);
+        }
+        shadowRootsWithOverrides.forEach((root) => {
+            const shadowInvertStyle = root.querySelector(".darkreader--invert");
+            if (shadowInvertStyle) {
+                setInversionStyleValue(shadowInvertStyle);
+            }
+        });
+    });
+    setFilterSelectorHandler((selector, type) => {
+        const changed = addFilterSelector(selector, type);
+        if (changed) {
+            scheduleInversionStyleUpdate();
+        }
+    });
+    function setInversionStyleValue(invertStyle) {
+        if (!theme) {
+            return;
+        }
+        const rules = [];
+        const appendRule = (selectors, filter) => {
+            if (!filter || selectors.length === 0) {
+                return;
+            }
+            rules.push(
+                [
+                    `${selectors.join(", ")} {`,
+                    `    filter: ${filter} !important;`,
+                    "}"
+                ].join("\n")
+            );
+        };
+        const appendCounterInversion = (selectors) => {
+            if (theme.mode === 0 || selectors.length === 0) {
+                return;
+            }
+            rules.push(
+                [
+                    `${selectors.join(", ")} {`,
+                    `    color: black !important;`,
+                    "}",
+                    `${selectors.map((s) => `${s} > *`).join(", ")} {`,
+                    `    filter: invert(100%) hue-rotate(180deg) !important;`,
+                    "}"
+                ].join("\n")
+            );
+        };
+        const appendInversionCancellation = (selectors) => {
+            if (theme.mode === 0 || selectors.length === 0) {
+                return;
+            }
+            rules.push(
+                [
+                    `${selectors.join(", ")} {`,
+                    `    filter: none !important;`,
+                    `    color: var(--darkreader-neutral-text) !important;`,
+                    "}",
+                    `${selectors.map((s) => `${s} > *`).join(", ")} {`,
+                    `    filter: none !important;`,
+                    "}"
+                ].join("\n")
+            );
+        };
+        if (
+            (fixes && Array.isArray(fixes.invert) && fixes.invert.length > 0) ||
+            filterSelectors.invert.size > 0
+        ) {
+            const extraInversionSelectors = [...filterSelectors.invert];
+            const invertSelectors = [
+                ...(fixes?.invert ?? []),
+                ...extraInversionSelectors
+            ];
+            const invertFilter = getCSSFilterValue({
+                ...theme,
+                contrast:
+                    theme.mode === 0
+                        ? theme.contrast
+                        : clamp(theme.contrast - 10, 0, 100)
+            });
+            appendRule(invertSelectors, invertFilter);
+            appendCounterInversion(extraInversionSelectors);
+            if (filterSelectors.none.size > 0) {
+                const noneSelectors = [...filterSelectors.none];
+                appendInversionCancellation(noneSelectors);
+                if (theme.mode === 1) {
+                    const invertedChildSelectors = [];
+                    noneSelectors.forEach((parent) => {
+                        extraInversionSelectors.forEach((child) =>
+                            invertedChildSelectors.push(`${parent} > ${child}`)
+                        );
+                    });
+                    appendRule(invertedChildSelectors, invertFilter);
+                }
+            }
+        }
+        if (filterSelectors.dim.size > 0) {
+            appendRule(
+                [...filterSelectors.dim],
+                getCSSFilterValue({
+                    ...theme,
+                    brightness: clamp(theme.brightness - 10, 5, 200),
+                    sepia: clamp(theme.sepia + 10, 0, 100)
+                })
+            );
+        }
+        invertStyle.textContent = rules.join("\n");
+    }
     function createStaticStyleOverrides() {
         const fallbackStyle = createOrUpdateStyle(
             "darkreader--fallback",
@@ -7383,21 +8082,7 @@
         }
         injectStaticStyle(textStyle, userAgentStyle, "text");
         const invertStyle = createOrUpdateStyle("darkreader--invert");
-        if (fixes && Array.isArray(fixes.invert) && fixes.invert.length > 0) {
-            invertStyle.textContent = [
-                `${fixes.invert.join(", ")} {`,
-                `    filter: ${getCSSFilterValue({
-                    ...theme,
-                    contrast:
-                        theme.mode === 0
-                            ? theme.contrast
-                            : clamp(theme.contrast - 10, 0, 100)
-                })} !important;`,
-                "}"
-            ].join("\n");
-        } else {
-            invertStyle.textContent = "";
-        }
+        setInversionStyleValue(invertStyle);
         injectStaticStyle(invertStyle, textStyle, "invert");
         const inlineStyle = createOrUpdateStyle("darkreader--inline");
         inlineStyle.textContent = getInlineOverrideStyle();
@@ -7458,21 +8143,7 @@
             fixes && fixes.css ? replaceCSSTemplates(fixes.css) : "";
         root.insertBefore(overrideStyle, inlineStyle.nextSibling);
         const invertStyle = createOrUpdateStyle("darkreader--invert", root);
-        if (fixes && Array.isArray(fixes.invert) && fixes.invert.length > 0) {
-            invertStyle.textContent = [
-                `${fixes.invert.join(", ")} {`,
-                `    filter: ${getCSSFilterValue({
-                    ...theme,
-                    contrast:
-                        theme.mode === 0
-                            ? theme.contrast
-                            : clamp(theme.contrast - 10, 0, 100)
-                })} !important;`,
-                "}"
-            ].join("\n");
-        } else {
-            invertStyle.textContent = "";
-        }
+        setInversionStyleValue(invertStyle);
         root.insertBefore(invertStyle, overrideStyle.nextSibling);
         shadowRootsWithOverrides.add(root);
     }
@@ -7577,55 +8248,7 @@
         );
         handleAdoptedStyleSheets(document);
         variablesStore.matchVariablesAndDependents();
-        if (isFirefox) {
-            const onAdoptedCssChange = (e) => {
-                const {sheets} = e.detail;
-                if (!Array.isArray(sheets) || sheets.length === 0) {
-                    return;
-                }
-                sheets.forEach(({sheet}) => {
-                    const {cssRules} = sheet;
-                    variablesStore.addRulesForMatching(cssRules);
-                });
-                variablesStore.matchVariablesAndDependents();
-                const response = [];
-                sheets.forEach(({sheetId, sheet}) => {
-                    const fallback = getAdoptedStyleSheetFallback(sheet);
-                    const cssRules = sheet.cssRules;
-                    fallback.render({
-                        theme: theme,
-                        ignoreImageAnalysis: ignoredImageAnalysisSelectors,
-                        cssRules
-                    });
-                    const commands = fallback.commands();
-                    response.push({sheetId, commands});
-                });
-                requestAnimationFrameOnce(
-                    getAdoptedStyleChangeToken(sheets[0].sheet),
-                    () => {
-                        document.dispatchEvent(
-                            new CustomEvent(
-                                "__darkreader__adoptedStyleSheetCommands",
-                                {detail: JSON.stringify(response)}
-                            )
-                        );
-                    }
-                );
-            };
-            document.addEventListener(
-                "__darkreader__adoptedStyleSheetsChange",
-                onAdoptedCssChange
-            );
-            cleaners.push(() =>
-                document.removeEventListener(
-                    "__darkreader__adoptedStyleSheetsChange",
-                    onAdoptedCssChange
-                )
-            );
-            document.dispatchEvent(
-                new CustomEvent("__darkreader__startAdoptedStyleSheetsWatcher")
-            );
-        }
+        tryInvertChromePDF();
     }
     let loadingStylesCounter = 0;
     const loadingStyles = new Set();
@@ -7716,14 +8339,19 @@
         }
         changeMetaThemeColorWhenAvailable(theme);
     }
+    function unwrap(value) {
+        return value?.wrappedJSObject ?? value;
+    }
     function handleAdoptedStyleSheets(node) {
-        if (isFirefox) {
-            return;
-        }
         if (canHaveAdoptedStyleSheets(node)) {
-            node.adoptedStyleSheets.forEach((s) => {
-                variablesStore.addRulesForMatching(s.cssRules);
-            });
+            forEach(
+                isFirefox
+                    ? unwrap(node.adoptedStyleSheets)
+                    : node.adoptedStyleSheets,
+                (s) => {
+                    variablesStore.addRulesForMatching(s.cssRules);
+                }
+            );
             const newManger = createAdoptedStyleSheetOverride(node);
             adoptedStyleManagers.push(newManger);
             newManger.render(theme, ignoredImageAnalysisSelectors);
@@ -7735,22 +8363,6 @@
                 newManger.render(theme, ignoredImageAnalysisSelectors);
             });
         }
-    }
-    function getAdoptedStyleChangeToken(sheet) {
-        if (adoptedStyleChangeTokens.has(sheet)) {
-            return adoptedStyleChangeTokens.get(sheet);
-        }
-        const token = Symbol();
-        adoptedStyleChangeTokens.set(sheet, token);
-        return token;
-    }
-    function getAdoptedStyleSheetFallback(sheet) {
-        let fallback = adoptedStyleFallbacks.get(sheet);
-        if (!fallback) {
-            fallback = createAdoptedStyleSheetFallback();
-            adoptedStyleFallbacks.set(sheet, fallback);
-        }
-        return fallback;
     }
     function watchForUpdates() {
         const managedStyles = Array.from(styleManagers.keys());
@@ -7826,6 +8438,7 @@
             }
         );
         addDOMReadyListener(onDOMReady);
+        setupDocumentPiPFontFix();
     }
     function stopWatchingForUpdates() {
         styleManagers.forEach((manager) => manager.pause());
@@ -7917,6 +8530,26 @@
             });
         }
     }
+    function tryInvertChromePDF() {
+        if (!document.body || !chrome.dom) {
+            return;
+        }
+        const root = chrome.dom.openOrClosedShadowRoot(document.body);
+        if (!root || !root.querySelector('link[href$="/pdf_embedder.css"]')) {
+            return;
+        }
+        const sheet = new CSSStyleSheet();
+        sheet.replaceSync(
+            '[type="application/pdf"] { filter: invert(1) contrast(0.9); }'
+        );
+        root.adoptedStyleSheets.push(sheet);
+        cleaners.push(() => {
+            const index = root.adoptedStyleSheets.indexOf(sheet);
+            if (index >= 0) {
+                root.adoptedStyleSheets.splice(index, 1);
+            }
+        });
+    }
     let prevTheme = null;
     let prevFixes = null;
     function createOrUpdateDynamicThemeInternal(
@@ -7982,9 +8615,13 @@
             ignoredInlineSelectors = Array.isArray(fixes.ignoreInlineStyle)
                 ? fixes.ignoreInlineStyle
                 : [];
+            setIgnoredCSSURLs(
+                Array.isArray(fixes.ignoreCSSUrl) ? fixes.ignoreCSSUrl : []
+            );
         } else {
             ignoredImageAnalysisSelectors = [];
             ignoredInlineSelectors = [];
+            setIgnoredCSSURLs([]);
         }
         if (theme.immediateModify) {
             setIsDOMReady(() => {
@@ -8052,6 +8689,82 @@
         removeNode(document.head.querySelector(".darkreader--proxy"));
     }
     const cleaners = [];
+    let pipListenerRegistered = false;
+    function setupDocumentPiPFontFix() {
+        if (pipListenerRegistered) {
+            return;
+        }
+        const docPiP = window.documentPictureInPicture;
+        if (!docPiP) {
+            return;
+        }
+        pipListenerRegistered = true;
+        function collectFontSheetCSS() {
+            const fontSheetRules = [];
+            for (const sheet of document.styleSheets) {
+                try {
+                    const rules = Array.from(sheet.cssRules);
+                    if (rules.some((rule) => rule instanceof CSSFontFaceRule)) {
+                        rules.forEach((rule) =>
+                            fontSheetRules.push(rule.cssText)
+                        );
+                    }
+                } catch (e) {}
+            }
+            return fontSheetRules.join("\n");
+        }
+        function getPipDoc() {
+            return docPiP.window?.document ?? null;
+        }
+        function injectFontCSS(fontCSS) {
+            const pipDoc = getPipDoc();
+            if (!pipDoc || pipDoc.querySelector(".darkreader--font-fix")) {
+                return;
+            }
+            const style = pipDoc.createElement("style");
+            style.classList.add("darkreader");
+            style.classList.add("darkreader--font-fix");
+            style.textContent = fontCSS;
+            (pipDoc.head || pipDoc.documentElement).appendChild(style);
+        }
+        function removeFontCSS() {
+            getPipDoc()?.querySelector(".darkreader--font-fix")?.remove();
+        }
+        function onPiPEnter() {
+            const pipDoc = getPipDoc();
+            if (
+                !pipDoc ||
+                pipDoc.querySelector('meta[name="darkreader-lock"]')
+            ) {
+                return;
+            }
+            const fontCSS = collectFontSheetCSS();
+            if (!fontCSS) {
+                return;
+            }
+            injectFontCSS(fontCSS);
+            const observer = new MutationObserver(() => {
+                if (pipDoc.querySelector('meta[name="darkreader-lock"]')) {
+                    observer.disconnect();
+                    docPiP.removeEventListener("enter", onPiPEnter);
+                    removeFontCSS();
+                    return;
+                }
+                injectFontCSS(fontCSS);
+            });
+            observer.observe(pipDoc, {childList: true, subtree: true});
+            cleaners.push(() => observer.disconnect());
+            docPiP.window.addEventListener("unload", () =>
+                observer.disconnect()
+            );
+        }
+        docPiP.addEventListener("enter", onPiPEnter);
+        cleaners.push(() => {
+            docPiP.removeEventListener("enter", onPiPEnter);
+            removeFontCSS();
+            pipListenerRegistered = false;
+        });
+    }
     function removeDynamicTheme() {
         document.documentElement.removeAttribute(`data-darkreader-mode`);
         document.documentElement.removeAttribute(`data-darkreader-scheme`);
@@ -8084,17 +8797,18 @@
         loadingStyles.clear();
         cleanLoadingLinks();
         forEach(document.querySelectorAll(".darkreader"), removeNode);
+        removeStyleContainer();
         adoptedStyleManagers.forEach((manager) => manager.destroy());
         adoptedStyleManagers.splice(0);
-        adoptedStyleFallbacks.forEach((fallback) => fallback.destroy());
-        adoptedStyleFallbacks.clear();
         metaObserver && metaObserver.disconnect();
+        scheduleInversionStyleUpdate.cancel();
         cleaners.forEach((clean) => clean());
         cleaners.splice(0);
     }
     function cleanDynamicThemeCache() {
         variablesStore.clear();
         parsedURLCache.clear();
+        cleanFilterSelectors();
         removeDocumentVisibilityListener();
         cancelRendering();
         stopWatchingForUpdates();
