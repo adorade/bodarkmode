@@ -2,9 +2,9 @@
 
 ![BackOffice Dark Mode][1]
 
-[![version](https://img.shields.io/badge/version-1.0.0-green)][2]
+[![version](https://img.shields.io/badge/version-1.1.0-green)][2]
 [![MIT license](https://img.shields.io/github/license/adorade/bodarkmode)][3]
-[![Dark Reader Badge](https://img.shields.io/badge/Dark_Reader-4.9.109-blue?logo=git)][4]
+[![Dark Reader Badge](https://img.shields.io/badge/Dark_Reader-4.9.128-blue?logo=git)][4]
 [![PrestaShop](https://img.shields.io/badge/PrestaShop-8--9-blue?logo=prestashop)][5]
 [![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/adorade/bodarkmode/total)][6]
 

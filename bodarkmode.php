@@ -1,4 +1,5 @@
 <?php
+
 /**
  * BO Dark Mode Module for PrestaShop BackOffice
  *
@@ -6,6 +7,7 @@
  * @copyright 2025 Adorade
  * @license MIT
  */
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -16,7 +18,7 @@ class Bodarkmode extends Module
     {
         $this->name = 'bodarkmode';
         $this->tab = 'administration';
-        $this->version = '1.0.0';
+        $this->version = '1.1.0';
         $this->author = 'Adorade';
         $this->need_instance = 0;
         $this->bootstrap = true;

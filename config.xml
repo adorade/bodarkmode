@@ -2,7 +2,7 @@
 <module>
     <name>bodarkmode</name>
     <displayName><![CDATA[BO Dark Mode]]></displayName>
-    <version><![CDATA[1.0.0]]></version>
+    <version><![CDATA[1.1.0]]></version>
     <description><![CDATA[Just a Simple Dark Mode Module for PrestaShop BackOffice]]></description>
     <author><![CDATA[Adorade]]></author>
     <tab><![CDATA[administration]]></tab>
