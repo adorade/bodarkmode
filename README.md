@@ -2,7 +2,7 @@
 
 ![BackOffice Dark Mode][1]
 
-[![version](https://img.shields.io/badge/version-1.1.0-green)][2]
+[![version](https://img.shields.io/badge/version-1.2.0-green)][2]
 [![MIT license](https://img.shields.io/github/license/adorade/bodarkmode)][3]
 [![Dark Reader Badge](https://img.shields.io/badge/Dark_Reader-4.9.128-blue?logo=git)][4]
 [![PrestaShop](https://img.shields.io/badge/PrestaShop-8--9-blue?logo=prestashop)][5]
@@ -56,7 +56,7 @@ You can update `darkreader` script files via a CDN such as:
 
 This module includes code from Dark Reader, which is licensed under the MIT License.
 Bodarkmode module is licensed under [MIT][11].  
-Copyright (c) 2025 [Adorade][12]
+Copyright (c) 2025-26 [Adorade][12]
 
 ## Thanks for use
 
