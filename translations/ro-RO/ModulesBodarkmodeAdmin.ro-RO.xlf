@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file original="ModulesBodarkmodeAdmin.xlf" source-language="en-US" target-language="ro-RO" datatype="plaintext">
+    <body>
+      <trans-unit id="876f23178c29dc2552c0b48bf23cd9bd">
+        <source>Are you sure you want to uninstall?</source>
+        <target>Sigur doriți să dezinstalați?</target>
+      </trans-unit>
+      <trans-unit id="03dc5658d5ee675187c708383b53acaa">
+        <source>BO Dark Mode</source>
+        <target>BO Dark Mode</target>
+      </trans-unit>
+      <trans-unit id="542ab542c0295abf912180920ccd3618">
+        <source>Backoffice Dark Mode</source>
+        <target>Backoffice Dark Mode</target>
+      </trans-unit>
+      <trans-unit id="56ceb8eb4cce80ac04be7f2914adb12d">
+        <source>Here is configuration page for module!</source>
+        <target>Iată pagina de configurare a modulului!</target>
+      </trans-unit>
+      <trans-unit id="e2377297f08a03a493c134d08731fbae">
+        <source>I can configure it using the following configuration form.</source>
+        <target>Îl pot configura folosind următorul formular de configurare.</target>
+      </trans-unit>
+      <trans-unit id="bf3c3032c73992451ab4aa512707eee7">
+        <source>Just a Simple Dark Mode Module for PrestaShop BackOffice</source>
+        <target>Un simplu modul de mod întunecat pentru BackOffice-ul PrestaShop</target>
+      </trans-unit>
+      <trans-unit id="13adfa430efbb8fd38d9ca2ffe8cbc83">
+        <source>Thanks to PrestaShop, now I have a great module.</source>
+        <target>Datorită PrestaShop, acum am un modul excelent.</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>
