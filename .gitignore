@@ -8,6 +8,10 @@
 vendor
 stubs
 .php-cs-fixer.cache
+.php-cs-fixer.dist.php
+composer.json
+composer.lock
+rector.php
 
 # Module config files
 config_*.xml
