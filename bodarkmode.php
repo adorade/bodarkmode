@@ -1,11 +1,16 @@
 <?php
 
 /**
- * BO Dark Mode Module for PrestaShop BackOffice
+ * BO Dark Mode - Module for PrestaShop BackOffice
  *
- * @author Adorade
- * @copyright 2025 Adorade
- * @license MIT
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the MIT
+ *
+ * @version 1.2.0
+ * @author Rocket Team
+ * @copyright 2025-26 Adorade
+ * @license MIT License
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -18,24 +23,23 @@ class Bodarkmode extends Module
     {
         $this->name = 'bodarkmode';
         $this->tab = 'administration';
-        $this->version = '1.1.0';
-        $this->author = 'Adorade';
+        $this->version = '1.2.0';
+        $this->author = 'Rocket Team';
         $this->need_instance = 0;
         $this->bootstrap = true;
+        $this->ps_versions_compliancy = ['min' => '1.7.0.0', 'max' => _PS_VERSION_];
 
         parent::__construct();
 
         $this->displayName = $this->trans('BO Dark Mode', [], 'Modules.Bodarkmode.Admin');
         $this->description = $this->trans('Just a Simple Dark Mode Module for PrestaShop BackOffice', [], 'Modules.Bodarkmode.Admin');
-        $this->confirmUninstall = $this->trans('Are you sure you want to uninstall?', [], 'Module.Bodarkmode.Admin');
-
-        $this->ps_versions_compliancy = ['min' => '1.7.0.0', 'max' => _PS_VERSION_];
+        $this->confirmUninstall = $this->trans('Are you sure you want to uninstall?', [], 'Modules.Bodarkmode.Admin');
     }
 
     public function install()
     {
-        return parent::install() &&
-            $this->registerHook('displayBackOfficeHeader');
+        return parent::install()
+            && $this->registerHook('displayBackOfficeHeader');
     }
 
     public function uninstall()

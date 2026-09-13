@@ -1,11 +1,23 @@
 <?php
+
 /**
- * Bodarkmode Save CSS Module Admin Controller
+ * BO Dark Mode - Module for PrestaShop BackOffice
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the MIT
+ *
+ * @version 1.2.0
+ * @author Rocket Team
+ * @copyright 2025-26 Adorade
+ * @license MIT License
+ */
+
+/**
+ * Bodarkmode Save CSS Module Admin Controller.
  *
  * This controller handles saving the generated CSS from DarkReader to a file.
  * It expects a JSON input with the CSS content.
- *
- * @package Bodarkmode
  */
 class AdminBodarkmodeSavecssController extends ModuleAdminController
 {
