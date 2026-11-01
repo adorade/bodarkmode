@@ -1,19 +1,32 @@
 /**
- * BO Dark Mode Module for PrestaShop BackOffice
+ * BO Dark Mode Module for PrestaShop back office
  *
  * @author Adorade
- * @copyright 2025 Adorade
+ * @copyright 2025-26 Adorade
  * @license MIT
  */
 
 // Cache DOM selectors and frequently used values
 const LOCAL_STORAGE_KEY = 'bo_darkModeEnabled';
-const DARK_READER_CONFIG = {
+
+// DarkReader theme settings used by the PrestaShop back office
+const DARK_READER_THEME = {
     brightness: 100,
     contrast: 90,
-    sepia: 0
+    grayscale: 0,
+    sepia: 0,
+    darkSchemeBackgroundColor: '#181a1b',
+    darkSchemeTextColor: '#e8e6e3',
+    darkColorScheme: 'Default',
 };
-const IS_DEVELOPMENT = false; // Set to true for development mode
+
+// CSS exceptions for charts and canvas elements that need a readable light background.
+const DARK_READER_FIXES = {
+    invert: [],
+    css: 'canvas, svg.chart, .chart, [class*="chart"], [id*="chart"] { background: #e8e6e3 !important; }',
+    ignoreInlineStyle: ['canvas', 'svg', '.chart', '[class*="chart"]', '[id*="chart"]'],
+    ignoreImageAnalysis: ['canvas', 'svg', '.chart', '[class*="chart"]', '[id*="chart"]'],
+};
 
 // Optimize DarkReader fetch configuration with memoized headers
 const fetchConfig = {
@@ -21,29 +34,10 @@ const fetchConfig = {
     mode: 'no-cors'
 };
 
-// Export the DarkReader CSS for debugging purposes
-const saveDarkReaderCSS = async () => {
-    const css = await DarkReader.exportGeneratedCSS();
-
-    fetch('/index.php?fc=module&module=bodarkmode&controller=savecss', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ css })
-    })
-    .then(response => response.json())
-    .then(data => console.log('CSS saved:', data))
-    .catch(error => console.error('Error saving CSS:', error));
-};
-
 // Optimize DarkReader functions
 const enableDarkReader = () => {
     DarkReader.setFetchMethod(url => window.fetch(url, fetchConfig));
-    DarkReader.enable(DARK_READER_CONFIG);
-
-    // Save Dark Reader CSS if in development mode
-    // This is useful for debugging and development purposes
-    // It can be removed or disabled in production to avoid unnecessary requests
-    IS_DEVELOPMENT ? saveDarkReaderCSS() : null;
+    DarkReader.enable(DARK_READER_THEME, DARK_READER_FIXES);
 };
 
 // Disables Dark Reader

@@ -1,16 +1,15 @@
 <?php
-
 /**
- * BO Dark Mode - Module for PrestaShop BackOffice
+ * BO Dark Mode - Module for PrestaShop back office
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the MIT
+ * This source file is subject to the MIT License
  *
- * @version 1.2.0
+ * @version 1.3.0
  * @author Rocket Team
  * @copyright 2025-26 Adorade
- * @license MIT License
+ * @license http://opensource.org/licenses/mit-license.php MIT License
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -23,7 +22,7 @@ class Bodarkmode extends Module
     {
         $this->name = 'bodarkmode';
         $this->tab = 'administration';
-        $this->version = '1.2.0';
+        $this->version = '1.3.0';
         $this->author = 'Rocket Team';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -32,7 +31,7 @@ class Bodarkmode extends Module
         parent::__construct();
 
         $this->displayName = $this->trans('BO Dark Mode', [], 'Modules.Bodarkmode.Admin');
-        $this->description = $this->trans('Just a Simple Dark Mode Module for PrestaShop BackOffice', [], 'Modules.Bodarkmode.Admin');
+        $this->description = $this->trans('Just a Simple Dark Mode Module for PrestaShop back office', [], 'Modules.Bodarkmode.Admin');
         $this->confirmUninstall = $this->trans('Are you sure you want to uninstall?', [], 'Modules.Bodarkmode.Admin');
     }
 
@@ -56,21 +55,7 @@ class Bodarkmode extends Module
         $this->context->controller->addCSS($this->_path . 'views/css/back.css');
 
         // Adds JavaScript file from a module's directory
-        $this->context->controller->addJS($this->_path . 'views/js/darkreader.js');
+        $this->context->controller->addJS($this->_path . 'views/js/darkreader.min.js');
         $this->context->controller->addJS($this->_path . 'views/js/back.js');
     }
-
-    /**
-     * Get content for the module configuration page.
-     */
-    // public function getContent()
-    // {
-    //     $this->context->smarty->assign([
-    //         'admin_token' => Tools::getAdminTokenLite('AdminModules'),
-    //         'module_token' => Tools::getAdminTokenLite('AdminBodarkmodeSavecss'),
-    //         'admin_dir' => basename(_PS_ADMIN_DIR_),
-    //     ]);
-
-    //     return $this->context->smarty->fetch($this->local_path . 'views/templates/admin/configure.tpl');
-    // }
 }
