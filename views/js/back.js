@@ -1,8 +1,8 @@
 /**
- * BO Dark Mode Module for PrestaShop BackOffice
+ * BO Dark Mode Module for PrestaShop back office
  *
  * @author Adorade
- * @copyright 2025 Adorade
+ * @copyright 2025-26 Adorade
  * @license MIT
  */
 

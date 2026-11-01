@@ -1,16 +1,15 @@
 <?php
-
 /**
- * BO Dark Mode - Module for PrestaShop BackOffice
+ * BO Dark Mode - Module for PrestaShop back office
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the MIT
+ * This source file is subject to the MIT License
  *
- * @version 1.2.0
+ * @version 1.3.0-dev
  * @author Rocket Team
  * @copyright 2025-26 Adorade
- * @license MIT License
+ * @license http://opensource.org/licenses/mit-license.php MIT License
  */
 
 /**
