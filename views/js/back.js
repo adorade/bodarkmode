@@ -13,7 +13,6 @@ const DARK_READER_CONFIG = {
     contrast: 90,
     sepia: 0
 };
-const IS_DEVELOPMENT = false; // Set to true for development mode
 
 // Optimize DarkReader fetch configuration with memoized headers
 const fetchConfig = {
@@ -21,29 +20,10 @@ const fetchConfig = {
     mode: 'no-cors'
 };
 
-// Export the DarkReader CSS for debugging purposes
-const saveDarkReaderCSS = async () => {
-    const css = await DarkReader.exportGeneratedCSS();
-
-    fetch('/index.php?fc=module&module=bodarkmode&controller=savecss', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ css })
-    })
-    .then(response => response.json())
-    .then(data => console.log('CSS saved:', data))
-    .catch(error => console.error('Error saving CSS:', error));
-};
-
 // Optimize DarkReader functions
 const enableDarkReader = () => {
     DarkReader.setFetchMethod(url => window.fetch(url, fetchConfig));
     DarkReader.enable(DARK_READER_CONFIG);
-
-    // Save Dark Reader CSS if in development mode
-    // This is useful for debugging and development purposes
-    // It can be removed or disabled in production to avoid unnecessary requests
-    IS_DEVELOPMENT ? saveDarkReaderCSS() : null;
 };
 
 // Disables Dark Reader
