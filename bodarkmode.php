@@ -58,18 +58,4 @@ class Bodarkmode extends Module
         $this->context->controller->addJS($this->_path . 'views/js/darkreader.js');
         $this->context->controller->addJS($this->_path . 'views/js/back.js');
     }
-
-    /**
-     * Get content for the module configuration page.
-     */
-    // public function getContent()
-    // {
-    //     $this->context->smarty->assign([
-    //         'admin_token' => Tools::getAdminTokenLite('AdminModules'),
-    //         'module_token' => Tools::getAdminTokenLite('AdminBodarkmodeSavecss'),
-    //         'admin_dir' => basename(_PS_ADMIN_DIR_),
-    //     ]);
-
-    //     return $this->context->smarty->fetch($this->local_path . 'views/templates/admin/configure.tpl');
-    // }
 }
