@@ -3,7 +3,7 @@
     <name>bodarkmode</name>
     <displayName><![CDATA[BO Dark Mode]]></displayName>
     <version><![CDATA[1.2.0]]></version>
-    <description><![CDATA[Just a Simple Dark Mode Module for PrestaShop BackOffice]]></description>
+    <description><![CDATA[Just a Simple Dark Mode Module for PrestaShop back office]]></description>
     <author><![CDATA[Rocket Team]]></author>
     <tab><![CDATA[administration]]></tab>
 	<confirmUninstall><![CDATA[Are you sure you want to uninstall?]]></confirmUninstall>

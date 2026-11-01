@@ -1,4 +1,4 @@
-# Dark Mode for Prestashop BackOffice
+# Dark Mode for Prestashop back office
 
 ![BackOffice Dark Mode][1]
 

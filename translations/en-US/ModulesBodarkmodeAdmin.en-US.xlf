@@ -10,25 +10,9 @@
         <source>BO Dark Mode</source>
         <target>BO Dark Mode</target>
       </trans-unit>
-      <trans-unit id="542ab542c0295abf912180920ccd3618">
-        <source>Backoffice Dark Mode</source>
-        <target>Backoffice Dark Mode</target>
-      </trans-unit>
-      <trans-unit id="56ceb8eb4cce80ac04be7f2914adb12d">
-        <source>Here is configuration page for module!</source>
-        <target>Here is configuration page for module!</target>
-      </trans-unit>
-      <trans-unit id="e2377297f08a03a493c134d08731fbae">
-        <source>I can configure it using the following configuration form.</source>
-        <target>I can configure it using the following configuration form.</target>
-      </trans-unit>
       <trans-unit id="bf3c3032c73992451ab4aa512707eee7">
-        <source>Just a Simple Dark Mode Module for PrestaShop BackOffice</source>
-        <target>Just a Simple Dark Mode Module for PrestaShop BackOffice</target>
-      </trans-unit>
-      <trans-unit id="13adfa430efbb8fd38d9ca2ffe8cbc83">
-        <source>Thanks to PrestaShop, now I have a great module.</source>
-        <target>Thanks to PrestaShop, now I have a great module.</target>
+        <source>Just a Simple Dark Mode Module for PrestaShop back office</source>
+        <target>Just a Simple Dark Mode Module for PrestaShop back office</target>
       </trans-unit>
     </body>
   </file>
