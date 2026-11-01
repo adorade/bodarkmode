@@ -6,7 +6,7 @@
  *
  * This source file is subject to the MIT License
  *
- * @version 1.3.0-dev
+ * @version 1.3.0
  * @author Rocket Team
  * @copyright 2025-26 Adorade
  * @license http://opensource.org/licenses/mit-license.php MIT License
@@ -22,7 +22,7 @@ class Bodarkmode extends Module
     {
         $this->name = 'bodarkmode';
         $this->tab = 'administration';
-        $this->version = '1.3.0-dev';
+        $this->version = '1.3.0';
         $this->author = 'Rocket Team';
         $this->need_instance = 0;
         $this->bootstrap = true;
