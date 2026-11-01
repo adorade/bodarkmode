@@ -55,7 +55,7 @@ class Bodarkmode extends Module
         $this->context->controller->addCSS($this->_path . 'views/css/back.css');
 
         // Adds JavaScript file from a module's directory
-        $this->context->controller->addJS($this->_path . 'views/js/darkreader.js');
+        $this->context->controller->addJS($this->_path . 'views/js/darkreader.min.js');
         $this->context->controller->addJS($this->_path . 'views/js/back.js');
     }
 }
