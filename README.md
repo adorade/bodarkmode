@@ -48,6 +48,68 @@ You can update `darkreader` script files via a CDN such as:
 
 > DO NOT USE `.mjs` files, ONLY `.js`.
 
+## Themes
+
+The default Dark Reader theme is configured in `views/js/back.js`. To change the current palette, edit the `DARK_READER_THEME` object.
+
+Available presets:
+
+| Color Scheme | Background | Text |
+|--------------|------------|------|
+| Default | '#181a1b' | '#e8e6e3' |
+| Dracula | '#282b36' | '#e8e6e3' |
+| Nord | '#2e3440' | '#eceff4' |
+| Custom | '#0b0e14' | '#e6ebf2' |
+
+### Change the default theme
+
+Open the file and update these values:
+
+```js
+const DARK_READER_THEME = {
+    brightness: 100,
+    contrast: 90,
+    grayscale: 0,
+    sepia: 0,
+    darkSchemeBackgroundColor: '#2e3440',
+    darkSchemeTextColor: '#eceff4',
+    darkColorScheme: 'Nord',
+};
+```
+
+Replace `'#2e3440'`, `'#eceff4'`, and `'Nord'` with any of the preset values above or with your own colors.
+
+### Create a custom theme
+
+For a fully custom look, set:
+
+```js
+darkColorScheme: 'Custom',
+darkSchemeBackgroundColor: '#0b0e14',
+darkSchemeTextColor: '#e6ebf2',
+```
+
+Then refresh the PrestaShop back office to apply the new palette. You can also change other Dark Reader options such as `brightness`, `contrast`, `grayscale`, and `sepia` to fine-tune the look.
+
+### Fix charts and canvas elements
+
+The `DARK_READER_FIXES` config is used for CSS exceptions that keep charts, canvases, and similar SVG/chart widgets readable when dark mode is enabled.
+
+```js
+const DARK_READER_FIXES = {
+    invert: [],
+    css: 'canvas, svg.chart, .chart, [class*="chart"], [id*="chart"] { background: #e8e6e3 !important; }',
+    ignoreInlineStyle: ['canvas', 'svg', '.chart', '[class*="chart"]', '[id*="chart"]'],
+    ignoreImageAnalysis: ['canvas', 'svg', '.chart', '[class*="chart"]', '[id*="chart"]'],
+};
+```
+
+If a chart or graph still looks too dark, add its selector here or adjust the `css` rule to match your backend styling.
+
+## To Do
+
+- create a configuration form to change default values
+
 ## Credits
 
 - [Dark Reader][4] for the core dark mode engine.
@@ -62,7 +124,7 @@ Copyright (c) 2025-26 [Adorade][12]
 
 Hopefully, this module is useful to you.
 
-[1]: assets/screenshoot.webp
+[1]: assets/screenshot.webp
 [2]: boodarkmode.php
 [3]: https://mit-license.org
 [4]: https://github.com/darkreader/darkreader

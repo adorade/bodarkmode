@@ -8,10 +8,24 @@
 
 // Cache DOM selectors and frequently used values
 const LOCAL_STORAGE_KEY = 'bo_darkModeEnabled';
-const DARK_READER_CONFIG = {
+
+// DarkReader theme settings used by the PrestaShop back office
+const DARK_READER_THEME = {
     brightness: 100,
     contrast: 90,
-    sepia: 0
+    grayscale: 0,
+    sepia: 0,
+    darkSchemeBackgroundColor: '#181a1b',
+    darkSchemeTextColor: '#e8e6e3',
+    darkColorScheme: 'Default',
+};
+
+// CSS exceptions for charts and canvas elements that need a readable light background.
+const DARK_READER_FIXES = {
+    invert: [],
+    css: 'canvas, svg.chart, .chart, [class*="chart"], [id*="chart"] { background: #e8e6e3 !important; }',
+    ignoreInlineStyle: ['canvas', 'svg', '.chart', '[class*="chart"]', '[id*="chart"]'],
+    ignoreImageAnalysis: ['canvas', 'svg', '.chart', '[class*="chart"]', '[id*="chart"]'],
 };
 
 // Optimize DarkReader fetch configuration with memoized headers
@@ -23,7 +37,7 @@ const fetchConfig = {
 // Optimize DarkReader functions
 const enableDarkReader = () => {
     DarkReader.setFetchMethod(url => window.fetch(url, fetchConfig));
-    DarkReader.enable(DARK_READER_CONFIG);
+    DarkReader.enable(DARK_READER_THEME, DARK_READER_FIXES);
 };
 
 // Disables Dark Reader
